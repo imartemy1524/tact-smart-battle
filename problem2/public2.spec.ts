@@ -1,6 +1,6 @@
 import '@ton/test-utils';
 import { Blockchain, printTransactionFees } from '@ton/sandbox';
-import { toNano } from '@ton/core';
+import { fromNano, toNano } from '@ton/core';
 import { Proposal } from '../output/solution2_Proposal';
 import { ProposalMaster } from '../output/solution2_ProposalMaster';
 
@@ -53,8 +53,8 @@ it('solution2', async () => {
             value: true,
         },
     );
-    printTransactionFees(transactions)
 
+    console.log(fromNano(transactions[1]!.totalFees.coins))
     // the vote was counted
     expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
 });

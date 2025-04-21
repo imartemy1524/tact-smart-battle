@@ -1,76 +1,72 @@
 #include "./imports/stdlib.fc";
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
+int sum2hack(int a, int b) asm "DIVMOD ADD";
+int inc(int a) asm "INC";
 
-(int, int, int, slice, int, cell) load_data(int load_dictt) inline {
+(int, int, int, slice, int) load_data() inline {
     cell data = get_data();
     var cs = data.begin_parse();
 
     int votingEndingAt = cs~load_uint(32);
     int yesCount = cs~load_uint(32);
     int noCount = cs~load_uint(32);
+    cs~skip_bits(1); ;; skip dict
     slice master = cs~load_msg_addr();
     int proposalId = cs~load_uint(32);
-    cell dict = load_dictt ? cs~load_dict() : null();
-    return (votingEndingAt, yesCount, noCount, master, proposalId, dict);
-}
-() save_data(int votingUntil, int yescount, int nocount, slice master, int proposalId, cell dict) impure inline {
-    set_data(
-        begin_cell()
-            .store_uint(votingUntil, 32)
-            .store_uint(yescount, 32)
-            .store_uint(nocount, 32)
-            .store_slice(master)
-            .store_uint(proposalId, 32)
-            .store_dict(dict)
-            .end_cell()
-    );
+    return (votingEndingAt, yesCount, noCount, master, proposalId);
 }
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) {
         ;; ignore all empty messages
         return ();
     }
+    in_msg_body~skip_op();
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_msg_flags();
-    if (flags & 1) {
-        ;; ignore all bounced messages
-        return ();
-    }
     slice sender_address = cs~load_msg_addr();
-    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
-    if (in_msg_body~check_if_opcode$193b63cd()) {
-        throw_unless(1394, now() <= votingEndsAt);
-        throw_unless(1395, yes_count + no_count < 100);
-        (int chain, int address) = parse_std_addr(sender_address);
-        ;; force 0 chain
-        throw_if(1396, chain);
-        (cell _tt, int found) = dict.udict_get_ref?(256, address);
-        throw_if(1397, found);
-        dict~udict_set_ref(256, address, empty_cell());
+    slice data = get_data().begin_parse();
+    slice data0 = data;
+    ;; (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
 
-        int value = in_msg_body~load_int(1);
-        if (value) {
-            yes_count += 1;
-        } else {
-            no_count += 1;
-        }
-        save_data(
-            votingEndsAt,
-            yes_count,
-            no_count,
-            master,
-            proposalId,
-            dict
+    throw_unless(1394, now() <= data~load_uint(32));
+    throw_unless(1395, sum2hack(data~load_uint(64), 1 << 32) < 100);
+    (int chain, int address) = parse_std_addr(sender_address);
+    cell dict = data~load_dict();
+    cell prev = dict~udict_set_get_ref(256, address, empty_cell());
+    throw_unless(1397, cell_null?(prev));
+
+    int value = in_msg_body~load_int(1);
+    if (value) {
+        int a = inc(
+            data0~load_uint(64)
+        );
+        set_data(
+            begin_cell()
+            .store_uint(a, 64)
+            .store_slice(data0~load_bits(32))
+            .store_dict(dict)
+            .store_slice(data)
+            .end_cell()
+        );
+    } else {
+        int a = inc(
+            data0~load_uint(64 + 32)
+        );
+
+        set_data(
+            begin_cell()
+                .store_uint(a, 64 + 32)
+                .store_dict(dict)
+                .store_slice(data)
+                .end_cell()
         );
     }
-    else {
-        throw(0xffff);
-    }
+
 
 }
 
 _ proposalState() method_id {
-    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(0);
+    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId) = load_data();
     return (yes_count, no_count, master, proposalId, votingEndsAt);
 }
 () __tact_selector_hack_asm() impure asm """

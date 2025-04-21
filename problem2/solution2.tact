@@ -8,10 +8,9 @@ message DeployNewProposal {
 }
 inline fun packStateInit(init: StateInit): Cell{
     return beginCell()
-    .storeUint(0, 2)
-    .storeDict(init.code)
-    .storeDict(init.data)
-    .storeUint(0, 1)
+    .storeUint(0b110, 5)
+    .storeRef(init.code)
+    .storeRef(init.data)
     .endCell();
 
 }
@@ -29,12 +28,9 @@ const MSG_HAVE_STATE_INIT: Int = 4;
 const MSG_STATE_INIT_IN_REF: Int = 2;
 const MSG_BODY_IN_REF: Int = 1;
 
-fun contractAddressPacked(packed: Cell): Slice{
+inline fun contractAddressPacked(packed: Cell): Builder{
     return beginCell()
-        .storeUint(1024, 11)
-        .storeUint(packed.hash(), 256)
-        .endCell()
-        .beginParse()
+
 }
 contract ProposalMaster {
     id: Int as uint32 = 0;
@@ -46,15 +42,13 @@ contract ProposalMaster {
         let state = initOf Proposal(ProposalInit{master: myAddress(), proposalId: self.id});
         self.id += 1;
         let state_init_packed = packStateInit(state);
-        let addr = contractAddressPacked(state_init_packed);
         sendRawMessag(
+        //           dark magic here
             beginCell()
-            .storeUint(0x10, 6)
-            .storeSlice(addr)
-            .storeUint(MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
+            .storeUint(((0x10) << 11) + 1024, 6 + 11)
+            .storeUint(state_init_packed.hash(), 256)
+            .storeUint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0) << 32) + msg.votingEndingAt, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4 + 32)
             .storeRef(state_init_packed)
-            .storeUint(msg.votingEndingAt, 32)
-            //                .storeRef(msg.value?cell("te6cckEBAQEAAwAAAcCO6ba2"):cell("te6cckEBAQEAAwAAAUD20kA0"))
             .endCell(),
             SendRemainingValue
         );
@@ -80,12 +74,8 @@ struct ProposalState {
 }
 
 contract Proposal {
-    votingEndingAt: Int as uint32 = 0;
-    yesCount: Int as uint32 = 0;
-    noCount: Int as uint32 = 0;
     master: Address;
     proposalId: Int as uint32;
-    dictWithData: Bool = false;
     init(data: ProposalInit){
         self.master = data.master;
         self.proposalId = data.proposalId;
@@ -96,10 +86,9 @@ contract Proposal {
         setData(
             beginCell()
             .storeSlice(m)
-            .storeUint(0, 64)
+            .storeUint(0, 65)  // store uint32 + uint32 + dict(none)
             .storeAddress(self.master)
             .storeUint(self.proposalId, 32)
-            .storeBit(false)
             .endCell()
         );
         setCode(actual_code());
@@ -128,80 +117,75 @@ asm fun setData(code: Cell) { c4 POP }
 asm extends fun storeDict(self: Builder, dict: Cell): Builder {
     SWAP STDICT
 }
-// source code (func):
 // #include "./imports/stdlib.fc";
 //(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
+//int sum2hack(int a, int b) asm "DIVMOD ADD";
+//int inc(int a) asm "INC";
 //
-//(int, int, int, slice, int, cell) load_data(int load_dictt) inline {
+//(int, int, int, slice, int) load_data() inline {
 //    cell data = get_data();
 //    var cs = data.begin_parse();
 //
 //    int votingEndingAt = cs~load_uint(32);
 //    int yesCount = cs~load_uint(32);
 //    int noCount = cs~load_uint(32);
+//    cs~skip_bits(1); ;; skip dict
 //    slice master = cs~load_msg_addr();
 //    int proposalId = cs~load_uint(32);
-//    cell dict = load_dictt ? cs~load_dict() : null();
-//    return (votingEndingAt, yesCount, noCount, master, proposalId, dict);
-//}
-//() save_data(int votingUntil, int yescount, int nocount, slice master, int proposalId, cell dict) impure inline {
-//    set_data(
-//        begin_cell()
-//            .store_uint(votingUntil, 32)
-//            .store_uint(yescount, 32)
-//            .store_uint(nocount, 32)
-//            .store_slice(master)
-//            .store_uint(proposalId, 32)
-//            .store_dict(dict)
-//            .end_cell()
-//    );
+//    return (votingEndingAt, yesCount, noCount, master, proposalId);
 //}
 //() recv_internal(cell in_msg_full, slice in_msg_body) impure {
 //    if (in_msg_body.slice_empty?()) {
 //        ;; ignore all empty messages
 //        return ();
 //    }
+//    in_msg_body~skip_op();
 //    slice cs = in_msg_full.begin_parse();
 //    int flags = cs~load_msg_flags();
-//    if (flags & 1) {
-//        ;; ignore all bounced messages
-//        return ();
-//    }
 //    slice sender_address = cs~load_msg_addr();
-//    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
-//    if (in_msg_body~check_if_opcode$193b63cd()) {
-//        throw_unless(1394, now() <= votingEndsAt);
-//        throw_unless(1395, yes_count + no_count < 100);
-//        (int chain, int address) = parse_std_addr(sender_address);
-//        ;; force 0 chain
-//        throw_if(1396, chain);
-//        (cell _tt, int found) = dict.udict_get_ref?(256, address);
-//        throw_if(1397, found);
-//        dict~udict_set_ref(256, address, empty_cell());
+//    slice data = get_data().begin_parse();
+//    slice data0 = data;
+//    ;; (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
 //
-//        int value = in_msg_body~load_int(1);
-//        if (value) {
-//            yes_count += 1;
-//        } else {
-//            no_count += 1;
-//        }
-//        save_data(
-//            votingEndsAt,
-//            yes_count,
-//            no_count,
-//            master,
-//            proposalId,
-//            dict
+//    throw_unless(1394, now() <= data~load_uint(32));
+//    throw_unless(1395, sum2hack(data~load_uint(64), 1 << 32) < 100);
+//    (int chain, int address) = parse_std_addr(sender_address);
+//    cell dict = data~load_dict();
+//    cell prev = dict~udict_set_get_ref(256, address, empty_cell());
+//    throw_unless(1397, cell_null?(prev));
+//
+//    int value = in_msg_body~load_int(1);
+//    if (value) {
+//        int a = inc(
+//            data0~load_uint(64)
+//        );
+//        set_data(
+//            begin_cell()
+//            .store_uint(a, 64)
+//            .store_slice(data0~load_bits(32))
+//            .store_dict(dict)
+//            .store_slice(data)
+//            .end_cell()
+//        );
+//    } else {
+//        int a = inc(
+//            data0~load_uint(64 + 32)
+//        );
+//
+//        set_data(
+//            begin_cell()
+//                .store_uint(a, 64 + 32)
+//                .store_dict(dict)
+//                .store_slice(data)
+//                .end_cell()
 //        );
 //    }
-//    else {
-//        throw(0xffff);
-//    }
+//
 //
 //}
 //
 //_ proposalState() method_id {
-//    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(0);
+//    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId) = load_data();
 //    return (yes_count, no_count, master, proposalId, votingEndsAt);
 //}
 //() __tact_selector_hack_asm() impure asm """
@@ -229,4 +213,4 @@ asm extends fun storeDict(self: Builder, dict: Cell): Builder {
 //() __tact_selector_hack() method_id (65535) {
 //    return __tact_selector_hack_asm();
 //}
-asm fun actual_code(): Cell { B{b5ee9c724101040100ce0002a2ff00208ec33020c700915be001d0d3030171b0915be0fa403071ed44d0d31fd31fd31ffa40d31f069405f4043092356de210451034413007d72c20c9db1e6c965f08840ff2f0e30de1f4a413f4bcf2c80b0103019af82326bbf2e5725343a0c164f2e57306fa4401f2d57453078307f40f6fa131f2d5758840188307f41705d200309202a49301a458e21035503405c8cb1f14cb1f12cb1f01cf16cb1ff400c9ed540200000049a64e589c3b513434c7f4c7f4c7fe9034c7c1a5017d010c248d5b788411440d104c0c1540e02eaf7b25} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c724101040100a20003faff00208ef23020c700915be08020d72101d0d3030130fa4030ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57302fa443102f4048850428307f46f6ef2e57503d200308e16d33f01a4c8cb3f01d61f30cf1612f40001cf16c9ed548e10d35f30a4c8cb5f12f40001cf16c9ed54e2e1f4a413f4bc0102030000002da64e58bb513434c7f4c7f4c7dc75c87e9034c7cc1540e00006f2c80b7fd7354a} B>boc PUSHREF }

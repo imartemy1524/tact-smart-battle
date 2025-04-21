@@ -32,15 +32,14 @@
 
 cell child_state_init(slice owner) inline {
     return begin_cell()
-        .store_uint(0, 2)
-        .store_dict(get_child_code())
-        .store_dict(
+        .store_uint(6, 5)
+        .store_ref(get_child_code())
+        .store_ref(
             begin_cell()
                 .store_slice(my_address())
                 .store_slice(owner)
                 .end_cell()
         )
-        .store_uint(0, 1)
         .end_cell();
 }
 slice calculate_child_address(cell state_init) inline {
