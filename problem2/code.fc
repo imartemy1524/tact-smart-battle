@@ -1,0 +1,101 @@
+#include "./imports/stdlib.fc";
+#include "_compiled_code.fc";
+(slice, int) check_if_opcode$1(slice input) asm "x{00000001} SDBEGINSQ";
+(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
+
+(int, int, int, slice, int, cell) load_data() inline_ref {
+    cell data = get_data();
+    var cs = data.begin_parse();
+
+    int votingEndingAt = cs~load_uint(32);
+    int yesCount = cs~load_uint(32);
+    int noCount = cs~load_uint(32);
+    slice master = cs~load_msg_addr();
+    int proposalId = cs~load_uint(32);
+    var dict = cs~load_dict();
+    cs.end_parse();
+    return (votingEndingAt, yesCount, noCount, master, proposalId, dict);
+}
+() save_data(int votingUntil, int yescount, int nocount, slice master, int proposalId, cell dict) impure inline {
+    set_data(
+        begin_cell()
+            .store_uint(votingUntil, 32)
+            .store_uint(yescount, 32)
+            .store_uint(nocount, 32)
+            .store_slice(master)
+            .store_uint(proposalId, 32)
+            .store_dict(dict)
+            .end_cell()
+    );
+}
+() recv_internal(cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) {
+        ;; ignore all empty messages
+        return ();
+    }
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_msg_flags();
+    if (flags & 1) {
+        ;; ignore all bounced messages
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data();
+    if (in_msg_body~check_if_opcode$193b63cd()) {
+        throw_unless(1394, now() <= votingEndsAt);
+        throw_unless(1395, yes_count + no_count < 100);
+        (int chain, int address) = parse_std_addr(sender_address);
+        throw_if(1396, chain);
+
+        int value = in_msg_body~load_int(1);
+        if (value) {
+            yes_count += 1;
+        } else {
+            no_count += 1;
+        }
+        throw_unless(1397, null?(dict~udict_get_ref?(256, address)));
+        dict~udict_set_ref(256, address, empty_cell());
+        save_data(
+            votingEndsAt,
+            yes_count,
+            no_count,
+            master,
+            proposalId,
+            dict
+        );
+    }
+    else {
+        throw(0xffff);
+    }
+
+}
+
+_ proposalState() method_id {
+    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data();
+    return (yes_count, no_count, master, proposalId, votingEndsAt);
+}
+() __tact_selector_hack_asm() impure asm """
+@atend @ 1 {
+    execute current@ context@ current!
+    {
+        }END> b>
+
+        <{
+            SETCP0 DUP
+            IFNOTJMP:<{
+                DROP over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
+            }>
+swap <s ref@
+            0 swap @procdictkeylen idict- drop
+            -1 swap @procdictkeylen idict- drop
+            65535 swap @procdictkeylen idict- drop
+
+            @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
+        }> b>
+    } : }END>c
+    current@ context! current!
+} does @atend !
+""";
+() __tact_selector_hack() method_id (65535) {
+    return __tact_selector_hack_asm();
+}
