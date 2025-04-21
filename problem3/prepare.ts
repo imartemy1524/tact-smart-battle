@@ -25,6 +25,38 @@ async function compileChild(){
 }
 async function writeCodeToFile(code: Cell){
     const string = code.toBoc().toString("hex")
-    const codeString = `cell get_child_code() asm "B{${string}} B>boc PUSHREF";`
+    const codeString = `cell get_child_code() asm "B{${string}} B>boc PUSHREF";\n`
     await fs.promises.rm(__dirname + "/_compiled_code.fc");
+    await fs.promises.writeFile(__dirname + "/_compiled_code.fc", codeString);
+}
+async function compileParent(){
+    const code = await compileFunc({
+        sources: [
+            {
+                filename: "code.fc",
+                content: await fs.promises.readFile(__dirname +"/code.fc", "utf-8"),
+            },
+            {
+                filename: "imports/stdlib.fc",
+                content: await fs.promises.readFile(__dirname +"/imports/stdlib.fc", "utf-8"),
+            },
+            {
+                filename: "_compiled_code.fc",
+                content: await fs.promises.readFile(__dirname +"/_compiled_code.fc", "utf-8"),
+            }
+        ]
+    })
+    if(code.status !== "ok") {
+        console.error(code);
+        throw new Error("Compilation failed");
+    }
+    const cellCode = Cell.fromBase64(code.codeBoc);
+    return cellCode;
+}
+
+async function main(){
+    const code = await compileChild();
+    await writeCodeToFile(code);
+    const parentCode = await compileParent();
+
 }

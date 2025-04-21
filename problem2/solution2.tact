@@ -7,9 +7,6 @@ message DeployNewProposal {
     votingEndingAt: Int as uint32;
 
 }
-message DeployNewProposal2 {
-    votingEndingAt: Int as uint32;
-}
 contract ProposalMaster {
     id: Int as uint32 = 0;
     // deploy
@@ -23,7 +20,7 @@ contract ProposalMaster {
         send(SendParameters{
             to: addr,
             mode: SendRemainingValue,
-            body: DeployNewProposal2{
+            body: DeployNewProposal{
                 votingEndingAt: msg.votingEndingAt
             }.toCell(),
             value: 0,
@@ -61,7 +58,7 @@ contract Proposal {
         self.master = data.master;
         self.proposalId = data.proposalId;
     }
-    receive(m: DeployNewProposal2){
+    receive(m: DeployNewProposal){
         nativeThrowUnless(2025, sender() == self.master);
         self.votingEndingAt = m.votingEndingAt;
     }
