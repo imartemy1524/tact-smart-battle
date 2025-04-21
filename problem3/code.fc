@@ -44,8 +44,7 @@ cell child_state_init(slice owner) inline {
         .end_cell();
 }
 slice calculate_child_address(cell state_init) inline {
-    return begin_cell().store_uint(4, 3)
-        .store_int(0, 8)
+    return begin_cell().store_uint(1024, 11)
         .store_uint(cell_hash(state_init), 256)
         .end_cell()
         .begin_parse();

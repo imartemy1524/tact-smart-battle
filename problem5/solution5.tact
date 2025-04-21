@@ -73,8 +73,7 @@ contract Proposal {
 //        .end_cell();
 //}
 //slice calculate_child_address(cell state_init) inline {
-//    return begin_cell().store_uint(4, 3)
-//        .store_int(0, 8)
+//    return begin_cell().store_uint(1024, 11)
 //        .store_uint(cell_hash(state_init), 256)
 //        .end_cell()
 //        .begin_parse();
@@ -100,12 +99,20 @@ contract Proposal {
 //    }
 //    slice cs = in_msg_full.begin_parse();
 //    int flags = cs~load_msg_flags();
+//    (int votingUntil, int yescount, int nocount) = load_data();
 //    if (flags & 1) {
-//        ;; ignore all bounced messages
+//        in_msg_body~skip_bounced_prefix();
+//        int istrue = in_msg_body~load_bool();
+//        if (istrue) {
+//            yescount -= 1;
+//        } else {
+//            nocount -= 1;
+//        }
+//        in_msg_body.end_parse();
+//        save_data(votingUntil, yescount, nocount);
 //        return ();
 //    }
 //    slice sender_address = cs~load_msg_addr();
-//    (int votingUntil, int yescount, int nocount) = load_data();
 //
 //    if (in_msg_body~check_if_opcode$193b63cd()) {
 //        throw_unless(1394, now() <= votingUntil);
@@ -119,18 +126,18 @@ contract Proposal {
 //        save_data(votingUntil, yescount, nocount);
 //        deploy_child(sender_address, value);
 //    }
-//    elseif (in_msg_body~check_if_opcode$1()) {
-//        slice owner = in_msg_body~load_msg_addr();
-//        throw_unless(1342, equal_slices_bits(sender_address, calculate_child_address(child_state_init(owner))));
-//        int istrue = in_msg_body~load_bool();
-//        if (istrue) {
-//            yescount -= 1;
-//        } else {
-//            nocount -= 1;
-//        }
-//        save_data(votingUntil, yescount, nocount);
-//        reply_msg(owner, "error"u, 5 * 8);
-//    }
+//    ;; elseif (in_msg_body~check_if_opcode$1()) {
+//    ;;     slice owner = in_msg_body~load_msg_addr();
+//    ;;     throw_unless(1342, equal_slices_bits(sender_address, calculate_child_address(child_state_init(owner))));
+//    ;;     int istrue = in_msg_body~load_bool();
+//    ;;     if (istrue) {
+//    ;;         yescount -= 1;
+//    ;;     } else {
+//    ;;         nocount -= 1;
+//    ;;     }
+//    ;;     save_data(votingUntil, yescount, nocount);
+//    ;;     reply_msg(owner, "error"u, 5 * 8);
+//    ;; }
 //    else {
 //        throw(0xffff);
 //    }
@@ -168,7 +175,7 @@ contract Proposal {
 //}
 asm fun setCode(code: Cell) { SETCODE }
 asm fun setData(code: Cell) { c4 POP }
-asm fun actual_code(): Cell { B{b5ee9c72410208010001b6000450ff00208fa23020c700925f03e001d0d3030171b0925f03e0fa4030db3c04d72c20c9db1e6ce30fe10701020501ccf82323bbf2e572058209c9c380bef2e08704d20030209204a49403a40304e2550202c8cb1fcb1fcb1fc9ed54010170c8f828cf1658cf16c98822c8cb01f400f400cb00c9768010c8cb0522f9007074c8cb02ca07cbffc9d0cf16cb6fcc0101ca00c98040fb000301f23504d72c200000000c8ee6fa402170c8f828cf1658cf16c98822c8cb01f400f400cb00c9f9007074c8cb02ca07cbffc9d014c705f2e53e02d20001319203a59402a54013e2430302c8cb1fcb1fcb1fc9ed5482186572726f7280288010c8cb055003cf1602a620a66f12cf01c98042fb00965f05840ff2f0e2030114ff00f4a413f4bcf2c80b0400e4d320c700915be001d0d3030171b0915be0fa4030ed44d020fa405113c705f2e3e7fa40c7008e296c227fc85003cf1612ca00c9ed54816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb008e1f3158718010c8cb055004cf1613cb8e01cf1601cf16c98042fb00f80ff2c4bce20110f4a413f4bcf2c80b06010fa64e58b6cf1b04a0070014ed44d0d31fd31fd31fd19b4880a2} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c72410208010001b3000450ff00208fa23020c700925f03e001d0d3030171b0925f03e0fa4030db3c04d72c20c9db1e6ce30fe10701020501caf82323bbf2e57205821005f5e100bef2e08704d20030209204a49403a40304e2550202c8cb1fcb1fcb1fc9ed54010170c8f828cf1658cf16c98822c8cb01f400f400cb00c9768010c8cb0522f9008309c8cb0acbffc9d0cf16cb6fcc0101ca00c98040fb000301ee3504d72c200000000c8ee4fa402170c8f828cf1658cf16c98822c8cb01f400f400cb00c9f9008309c8cb0acbffc9d014c705f2e53e02d20001319203a59402a54013e2430302c8cb1fcb1fcb1fc9ed5482186572726f7280288010c8cb055003cf1602a620a66f12cf01c98042fb00965f05840ff2f0e2030114ff00f4a413f4bcf2c80b0400e4d320c700915be001d0d3030171b0915be0fa4030ed44d020fa405113c705f2e3e7fa40c7008e296c227fc85003cf1612ca00c9ed54816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb008e1f3158718010c8cb055004cf1613cb8e01cf1601cf16c98042fb00f80ff2c4bce20110f4a413f4bcf2c80b06010fa64e58b6cf1b04a0070014ed44d0d31fd31fd31fd1f65bab38} B>boc PUSHREF }
 
 // source code for child contract
 // #include "imports/stdlib.fc";
@@ -212,10 +219,11 @@ asm fun actual_code(): Cell { B{b5ee9c72410208010001b6000450ff00208fa23020c70092
 //    ;; now data_getter contains onwer address; one bit
 //    slice owner_address = data_getter~load_msg_addr();
 //    ifnot (slice_empty?(data_getter)) {
+//        throw(1001);
 //        ;; already deployed, throw message back
-//        reply(sender_address, owner_address, in_msg_body);
-//        commit();
-//        throw(1212);
+//;;        reply(sender_address, owner_address, in_msg_body);
+//;;        commit();
+//;;        throw(1212);
 //    }
 //    else {
 //        set_data(

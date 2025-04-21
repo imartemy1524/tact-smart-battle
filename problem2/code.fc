@@ -1,9 +1,7 @@
 #include "./imports/stdlib.fc";
-#include "_compiled_code.fc";
-(slice, int) check_if_opcode$1(slice input) asm "x{00000001} SDBEGINSQ";
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 
-(int, int, int, slice, int, cell) load_data() inline_ref {
+(int, int, int, slice, int, cell) load_data(int load_dictt) inline {
     cell data = get_data();
     var cs = data.begin_parse();
 
@@ -12,8 +10,7 @@
     int noCount = cs~load_uint(32);
     slice master = cs~load_msg_addr();
     int proposalId = cs~load_uint(32);
-    var dict = cs~load_dict();
-    cs.end_parse();
+    cell dict = load_dictt ? cs~load_dict() : null();
     return (votingEndingAt, yesCount, noCount, master, proposalId, dict);
 }
 () save_data(int votingUntil, int yescount, int nocount, slice master, int proposalId, cell dict) impure inline {
@@ -40,12 +37,16 @@
         return ();
     }
     slice sender_address = cs~load_msg_addr();
-    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data();
+    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
     if (in_msg_body~check_if_opcode$193b63cd()) {
         throw_unless(1394, now() <= votingEndsAt);
         throw_unless(1395, yes_count + no_count < 100);
         (int chain, int address) = parse_std_addr(sender_address);
+        ;; force 0 chain
         throw_if(1396, chain);
+        (cell _tt, int found) = dict.udict_get_ref?(256, address);
+        throw_if(1397, found);
+        dict~udict_set_ref(256, address, empty_cell());
 
         int value = in_msg_body~load_int(1);
         if (value) {
@@ -53,8 +54,6 @@
         } else {
             no_count += 1;
         }
-        throw_unless(1397, null?(dict~udict_get_ref?(256, address)));
-        dict~udict_set_ref(256, address, empty_cell());
         save_data(
             votingEndsAt,
             yes_count,
@@ -71,7 +70,7 @@
 }
 
 _ proposalState() method_id {
-    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data();
+    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(0);
     return (yes_count, no_count, master, proposalId, votingEndsAt);
 }
 () __tact_selector_hack_asm() impure asm """
