@@ -1,0 +1,87 @@
+#include "./imports/stdlib.fc";
+#include "_compiled_code.fc";
+(int, int, int) load_data() inline_ref {
+    cell data = get_data();
+    var cs = data.begin_parse();
+    data~skip_bits(1);
+    int votingEndingAt = data~load_uint(32);
+    int yesCount = data~load_uint(32);
+    int noCount = data~load_uint(32);
+    cs.end_parse(); ;; TODO: remove
+    return (votingEndingAt, yesCount, noCount);
+}
+() save_data(int votingUntil, int yescount, int nocount) impure inline {
+    set_data(
+        begin_cell()
+            .store_uint(0, 1)
+            .store_uint(votingUntil, 32)
+            .store_uint(yescount, 32)
+            .store_uint(nocount, 32)
+            .end_cell()
+    );
+}
+() deploy_child() impure inline {
+
+}
+
+() recv_internal( cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) {
+        ;; ignore all empty messages
+        return ();
+    }
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_msg_flags();
+    if (flags & 1) {
+        ;; ignore all bounced messages
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+    (int votingUntil, int yescount, int nocount) = load_data();
+    int op = in_msg_body~load_uint(32);
+
+    if(op == 0x193b63cd){
+        throw_unless(1394, now() <= votingUntil);
+        int value = in_msg_body~load_uint(1);
+        if(value == 1){
+            yescount += 1;
+        } else {
+            nocount += 1;
+        }
+        deploy_child(sender_address, value);
+        save_data(votingUntil, yescount, nocount);
+    }
+
+    cell data = load_data();
+}
+
+_ proposalState() method_id {
+    (int _aa, int yes_count, int no_count) = get_data();
+    return (yes_count, no_count);
+}
+
+
+() __tact_selector_hack_asm() impure asm """
+@atend @ 1 {
+    execute current@ context@ current!
+    {
+        }END> b>
+
+        <{
+            SETCP0 DUP
+            IFNOTJMP:<{
+                DROP over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
+            }>
+swap <s ref@
+            0 swap @procdictkeylen idict- drop
+            -1 swap @procdictkeylen idict- drop
+            65535 swap @procdictkeylen idict- drop
+
+            @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
+        }> b>
+    } : }END>c
+    current@ context! current!
+} does @atend !
+""";
+() __tact_selector_hack() method_id(65535) {
+    return __tact_selector_hack_asm();
+}

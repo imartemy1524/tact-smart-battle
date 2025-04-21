@@ -1,0 +1,1 @@
+cell get_child_code() asm "B{hex} B>boc PUSHREF";

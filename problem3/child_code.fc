@@ -1,0 +1,57 @@
+#include "imports/stdlib.fc";
+
+() reply(slice to, slice owner, slice message) impure inline {
+    cell msg2sender = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(to)
+        .store_uint(1, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32)) ;; op code 1
+        .store_slice(owner) ;; owner address
+        .store_slice(message) ;; the bit, describing minus or plus
+        .end_cell();
+    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
+}
+() reply_msg(slice to, int message, int length) impure inline {
+    cell msg2sender = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(to)
+        .store_uint(message, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + length)) ;; 32 bits empty (comment padding) and length - length of comment
+        .end_cell();
+    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
+}
+
+() recv_internal(cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) {
+        ;; ignore all empty messages
+        return ();
+    }
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_msg_flags();
+    if (flags & 1) {
+        ;; ignore all bounced messages
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+    cell data = get_data();
+    slice data_getter = data.begin_parse();
+    slice data_original = data_getter;
+    ;; check that sender is master
+    throw_unless(999, equal_slices_bits(data_getter~load_msg_addr(), sender_address));
+    ;; now data_getter contains onwer address; one bit
+    slice owner_address = data_getter~load_msg_addr();
+    ifnot (slice_empty?(data_getter)) {
+        ;; already deployed, throw message back
+        reply(sender_address, owner_address, in_msg_body);
+        commit();
+        throw(12345);
+    }
+    else {
+
+        set_data(
+            begin_cell()
+            .store_slice(data_original)
+            .store_int(TRUE, 1) ;; store the bit
+            .end_cell()
+        );
+        reply_msg(owner_address, "ok"u, 2 * 8);
+    }
+}

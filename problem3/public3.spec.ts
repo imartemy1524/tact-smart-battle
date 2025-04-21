@@ -1,8 +1,9 @@
 import '@ton/test-utils';
-import { Blockchain } from '@ton/sandbox';
-import { toNano } from '@ton/core';
+import { Blockchain, printTransactionFees } from '@ton/sandbox';
+import { Cell, toNano } from '@ton/core';
 import { Proposal } from '../output/solution3_Proposal';
-
+import {compileFunc} from '@ton-community/func-js';
+import * as fs from 'fs';
 it('solution3', async () => {
     const blockchain = await Blockchain.create();
 
@@ -27,7 +28,7 @@ it('solution3', async () => {
 
     // vote
     const voter = await blockchain.treasury('voter');
-    await proposal.send(
+    const {transactions} = await proposal.send(
         voter.getSender(),
         { value: toNano('0.1') },
         {
@@ -35,7 +36,41 @@ it('solution3', async () => {
             value: true,
         },
     );
+    printTransactionFees(transactions);
 
     // the vote was counted
     expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+    {
+        const { transactions } = await proposal.send(
+            voter.getSender(),
+            { value: toNano('0.1') },
+            {
+                $$type: 'Vote',
+                value: true,
+            },
+        );
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+    }
+    {
+        const { transactions } = await proposal.send(
+            voter.getSender(),
+            { value: toNano('0.1') },
+            {
+                $$type: 'Vote',
+                value: false,
+            },
+        );
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+    }
+    {
+        const { transactions } = await proposal.send(
+            (await blockchain.treasury("tete")).getSender(),
+            { value: toNano('0.1') },
+            {
+                $$type: 'Vote',
+                value: false,
+            },
+        );
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 1n });
+    }
 });
