@@ -33,15 +33,24 @@
     slice sender_address = cs~load_msg_addr();
     cell data = get_data();
     slice data_getter = data.begin_parse();
+    slice data_original = data_getter;
     ;; check that sender is master
     throw_unless(999, equal_slices_bits(data_getter~load_msg_addr(), sender_address));
-    ;; check if already voted
-    throw_if(1212, is_address_none(data_getter));
-    set_data(
-        begin_cell()
-            .store_slice(sender_address)
-            .store_address_none() ;; store the status as null address
-            .end_cell()
-    );
-
+    ;; now data_getter contains onwer address; one bit
+    slice owner_address = data_getter~load_msg_addr();
+    ifnot (slice_empty?(data_getter)) {
+        ;; already deployed, throw message back
+        reply(sender_address, owner_address, in_msg_body);
+        commit();
+        throw(1212);
+    }
+    else {
+        set_data(
+            begin_cell()
+                .store_slice(data_original)
+                .store_int(TRUE, 1) ;; store the bit
+                .end_cell()
+        );
+        reply_msg(owner_address, "ok"u, 2 * 8);
+    }
 }

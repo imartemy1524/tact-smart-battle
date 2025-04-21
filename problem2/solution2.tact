@@ -59,7 +59,9 @@ contract Proposal {
         self.proposalId = data.proposalId;
     }
     receive(m: DeployNewProposal){
-        nativeThrowUnless(2025, sender() == self.master);
+        if(sender() != self.master){
+            throw(2025);
+        }
         self.votingEndingAt = m.votingEndingAt;
     }
     receive(msg: Vote) {

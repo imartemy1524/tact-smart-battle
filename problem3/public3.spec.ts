@@ -18,17 +18,18 @@ it('solution3', async () => {
 
     // deploy contract
     const deployer = await blockchain.treasury('deployer');
-    await proposal.send(
+    const {transactions} = await proposal.send(
         deployer.getSender(),
         {
             value: toNano('0.01'),
         },
         null, // empty message, handled by `receive()` without parameters
     );
+    printTransactionFees(transactions)
 
     // vote
     const voter = await blockchain.treasury('voter');
-    const {transactions} = await proposal.send(
+    const {transactions: transactions2} = await proposal.send(
         voter.getSender(),
         { value: toNano('0.1') },
         {
@@ -36,7 +37,7 @@ it('solution3', async () => {
             value: true,
         },
     );
-    printTransactionFees(transactions);
+    printTransactionFees(transactions2);
 
     // the vote was counted
     expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
@@ -61,6 +62,7 @@ it('solution3', async () => {
             },
         );
         expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+        printTransactionFees(transactions);
     }
     {
         const { transactions } = await proposal.send(

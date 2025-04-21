@@ -2,6 +2,7 @@
 #include "_compiled_code.fc";
 (slice, int) check_if_opcode$1(slice input) asm "x{00000001} SDBEGINSQ";
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
+const const::min_amount = 30000000; ;; 0.03 ton
 
 (int, int, int) load_data() inline_ref {
     cell data = get_data();
@@ -54,7 +55,7 @@ slice calculate_child_address(cell state_init) inline {
 () deploy_child(slice sender_address, int value) impure inline {
     cell state_init = child_state_init(sender_address);
     cell message = begin_cell()
-        .store_uint(BOUNCEABLE, 6)
+        .store_uint(0x10, 6)
         .store_slice(calculate_child_address(state_init))
         .store_uint(MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
         .store_ref(state_init)
@@ -64,29 +65,23 @@ slice calculate_child_address(cell state_init) inline {
 
 }
 
-() recv_internal(cell in_msg_full, slice in_msg_body) impure {
+() recv_internal(int ton_amount, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) {
         ;; ignore all empty messages
         return ();
     }
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_msg_flags();
-    (int votingUntil, int yescount, int nocount) = load_data();
     if (flags & 1) {
-        in_msg_body~skip_bounced_prefix();
-        int istrue = in_msg_body~load_bool();
-        if (istrue) {
-            yescount -= 1;
-        } else {
-            nocount -= 1;
-        }
-        in_msg_body.end_parse();
-        save_data(votingUntil, yescount, nocount);
+        ;; ignore all bounced messages
         return ();
     }
-    elseif (in_msg_body~check_if_opcode$193b63cd()) {
-        slice sender_address = cs~load_msg_addr();
+    slice sender_address = cs~load_msg_addr();
+    (int votingUntil, int yescount, int nocount) = load_data();
+
+    if (in_msg_body~check_if_opcode$193b63cd()) {
         throw_unless(1394, now() <= votingUntil);
+        throw_unless(135, ton_amount >= const::min_amount);
         int value = in_msg_body~load_int(1);
         if (value) {
             yescount += 1;
@@ -95,6 +90,18 @@ slice calculate_child_address(cell state_init) inline {
         }
         save_data(votingUntil, yescount, nocount);
         deploy_child(sender_address, value);
+    }
+    elseif (in_msg_body~check_if_opcode$1()) {
+        slice owner = in_msg_body~load_msg_addr();
+        throw_unless(1342, equal_slices_bits(sender_address, calculate_child_address(child_state_init(owner))));
+        int istrue = in_msg_body~load_bool();
+        if (istrue) {
+            yescount -= 1;
+        } else {
+            nocount -= 1;
+        }
+        save_data(votingUntil, yescount, nocount);
+        reply_msg(owner, "error"u, 5 * 8);
     }
     else {
         throw(0xffff);
