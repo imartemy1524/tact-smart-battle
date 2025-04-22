@@ -42,9 +42,6 @@ cell child_state_init(slice owner) inline {
     if (op == 1) {
         slice sender = in_msg_body~load_msg_addr();
         int istrue = in_msg_body~load_bool();
-        throw_unless(1394, equal_slices_bits(
-            sender_address, calculate_child_address(child_state_init(sender))
-        ));
         slice data = get_data().begin_parse();
         if (istrue) {
             set_data(
@@ -67,7 +64,7 @@ cell child_state_init(slice owner) inline {
     }
     ;; elseif (in_msg_body~check_if_opcode$193b63cd()) {
     slice data = get_data().begin_parse();
-    slice data2 = data;
+    ;; slice data2 = data;
     throw_unless(1394, now() <= data~load_uint(32));
     ;; int value = in_msg_body~load_uint(1);
     ;; if (value) {
