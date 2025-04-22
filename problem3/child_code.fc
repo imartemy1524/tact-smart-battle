@@ -1,47 +1,14 @@
 #include "imports/stdlib.fc";
+(slice, ()) check_if_starts_with(slice input, slice starts_with) impure asm "SDBEGINSX";
 
-() reply(slice to, slice owner, slice message) impure inline {
-    cell msg2sender = begin_cell()
-        .store_uint(0x10, 6)
-        .store_slice(to)
-        .store_uint(1, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32)) ;; op code 1
-        .store_slice(owner) ;; owner address
-        .store_slice(message) ;; the bit, describing minus or plus
-        .end_cell();
-    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
-}
-() reply_msg(slice to, int message, int length) impure inline {
-    cell msg2sender = begin_cell()
-        .store_uint(0x10, 6)
-        .store_slice(to)
-        .store_uint(message, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + length)) ;; 32 bits empty (comment padding) and length - length of comment
-        .end_cell();
-    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
-}
-
-() recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) {
-        ;; ignore all empty messages
-        return ();
-    }
+() recv_internal(cell in_msg_full, slice _) impure {
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_msg_flags();
-    if (flags & 1) {
-        ;; ignore all bounced messages
-        return ();
-    }
     slice sender_address = cs~load_msg_addr();
-    cell data = get_data();
-    slice data_getter = data.begin_parse();
-    ;; check that sender is master
-    throw_unless(999, equal_slices_bits(data_getter~load_msg_addr(), sender_address));
-    ;; check if already voted
-    throw_if(1212, is_address_none(data_getter));
+    slice data_getter = get_data().begin_parse();
+    data_getter~check_if_starts_with(sender_address);
     set_data(
-        begin_cell()
-            .store_slice(sender_address)
-            .store_address_none() ;; store the status as null address
-            .end_cell()
+        address_none_cell()
     );
 
 }

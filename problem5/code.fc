@@ -4,7 +4,7 @@
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 const const::min_amount = 100000000; ;; 0.1 ton
 
-(int, int, int) load_data() inline_ref {
+(int, int, int) load_data() inline {
     cell data = get_data();
     var cs = data.begin_parse();
     int votingEndingAt = cs~load_uint(32);

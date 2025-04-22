@@ -8,8 +8,7 @@ contract Proposal {
     init(data: Init) {
         setData(
             beginCell()
-                .storeUint(data.votingEndingAt, 32)
-                .storeUint(0, 64)
+                .storeUint(data.votingEndingAt << 64, 32 + 64)
             .endCell()
         );
         setCode(actual_code());
@@ -32,62 +31,33 @@ asm fun setData(code: Cell) { c4 POP }
 //(slice, int) check_if_opcode$1(slice input) asm "x{00000001} SDBEGINSQ";
 //(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 //
-//(int, int, int) load_data() inline_ref {
-//    cell data = get_data();
-//    var cs = data.begin_parse();
-//    int votingEndingAt = cs~load_uint(32);
-//    int yesCount = cs~load_uint(32);
-//    int noCount = cs~load_uint(32);
-//    cs.end_parse();
-//    return (votingEndingAt, yesCount, noCount);
-//}
-//() save_data(int votingUntil, int yescount, int nocount) impure inline {
-//    set_data(
-//        begin_cell()
-//            .store_uint(votingUntil, 32)
-//            .store_uint(yescount, 32)
-//            .store_uint(nocount, 32)
-//            .end_cell()
-//    );
-//}
-//() reply_msg(slice to, int message, int length) impure inline {
-//    cell msg2sender = begin_cell()
-//        .store_uint(0x10, 6)
-//        .store_slice(to)
-//        .store_uint(message, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + length)) ;; 32 bits empty (comment padding) and length - length of comment
-//        .end_cell();
-//    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
-//}
-//
 //cell child_state_init(slice owner) inline {
 //    return begin_cell()
-//        .store_uint(0, 2)
-//        .store_dict(get_child_code())
-//        .store_dict(
+//        .store_uint(6, 5)
+//        .store_ref(get_child_code())
+//        .store_ref(
 //            begin_cell()
 //                .store_slice(my_address())
 //                .store_slice(owner)
 //                .end_cell()
 //        )
-//        .store_uint(0, 1)
 //        .end_cell();
 //}
-//slice calculate_child_address(cell state_init) inline {
-//    return begin_cell().store_uint(4, 3)
-//        .store_int(0, 8)
-//        .store_uint(cell_hash(state_init), 256)
-//        .end_cell()
-//        .begin_parse();
-//}
+//;; slice calculate_child_address(cell state_init) inline {
+//;;     return begin_cell().store_uint(1024, 11)
+//;;         .store_uint(cell_hash(state_init), 256)
+//;;         .end_cell()
+//;;         .begin_parse();
+//;; }
 //
 //() deploy_child(slice sender_address, int value) impure inline {
 //    cell state_init = child_state_init(sender_address);
 //    cell message = begin_cell()
-//        .store_uint(BOUNCEABLE, 6)
-//        .store_slice(calculate_child_address(state_init))
-//        .store_uint(MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
+//        .store_uint((BOUNCEABLE << 11) + 1024, 6 + 11)
+//        .store_uint(cell_hash(state_init), 256)
+//    ;; .store_slice(calculate_child_address(state_init))
+//        .store_uint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0) << 1) + value, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4 + 1)
 //        .store_ref(state_init)
-//        .store_bool(value)
 //        .end_cell();
 //    send_raw_message(message, SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 //
@@ -100,40 +70,66 @@ asm fun setData(code: Cell) { c4 POP }
 //    }
 //    slice cs = in_msg_full.begin_parse();
 //    int flags = cs~load_msg_flags();
-//    (int votingUntil, int yescount, int nocount) = load_data();
+//    in_msg_body~skip_op();
+//
 //    if (flags & 1) {
-//        in_msg_body~skip_bounced_prefix();
+//        slice data = get_data().begin_parse();
 //        int istrue = in_msg_body~load_bool();
 //        if (istrue) {
-//            yescount -= 1;
-//        } else {
-//            nocount -= 1;
+//            set_data(
+//                begin_cell()
+//                .store_uint(data~load_uint(64) - 1, 64)
+//                .store_slice(data)
+//                .end_cell()
+//            );
+//            ;; save_data(votingUntil, yescount - 1, nocount);
 //        }
-//        in_msg_body.end_parse();
-//        save_data(votingUntil, yescount, nocount);
+//        else {
+//            set_data(
+//                begin_cell()
+//                    .store_uint(data~load_uint(64 + 32) - 1, 64 + 32)
+//                    .end_cell()
+//            );
+//            ;; save_data(votingUntil, yescount, nocount - 1);
+//        }
 //        return ();
 //    }
-//    elseif (in_msg_body~check_if_opcode$193b63cd()) {
-//        slice sender_address = cs~load_msg_addr();
-//        throw_unless(1394, now() <= votingUntil);
-//        int value = in_msg_body~load_int(1);
-//        if (value) {
-//            yescount += 1;
-//        } else {
-//            nocount += 1;
-//        }
-//        save_data(votingUntil, yescount, nocount);
-//        deploy_child(sender_address, value);
+//    ;; elseif (in_msg_body~check_if_opcode$193b63cd()) {
+//    slice sender_address = cs~load_msg_addr();
+//    slice data = get_data().begin_parse();
+//    slice data2 = data;
+//    throw_unless(1394, now() <= data~load_uint(32));
+//    int value = in_msg_body~load_uint(1);
+//    if (value) {
+//        int a = data2~load_uint(64) + 1;
+//        set_data(
+//                begin_cell()
+//                    .store_uint(a, 64)
+//                    .store_slice(data2)
+//                    .end_cell()
+//        );
+//;;            save_data(votingUntil, yescount + 1, nocount);
 //    }
 //    else {
-//        throw(0xffff);
+//        set_data(
+//            begin_cell()
+//                .store_uint(data2~load_uint(64 + 32) + 1, 64 + 32)
+//                .end_cell()
+//        );
+//      ;;  save_data(votingUntil, yescount, nocount + 1);
 //    }
+//    deploy_child(sender_address, value);
 //
 //}
 //
 //_ proposalState() method_id {
-//    (int _aa, int yes_count, int no_count) = load_data();
-//    return (yes_count, no_count);
+//    slice s = get_data().begin_parse();
+//    s~skip_bits(32);
+//
+//    return (
+//        s~load_uint(32),
+//        s~load_uint(32)
+//    );
 //}
 //() __tact_selector_hack_asm() impure asm """
 //@atend @ 1 {
@@ -160,55 +156,21 @@ asm fun setData(code: Cell) { c4 POP }
 //() __tact_selector_hack() method_id (65535) {
 //    return __tact_selector_hack_asm();
 //}
-// compiled to cell
-asm fun actual_code(): Cell { B{b5ee9c72410206010001080003a2ff00208f433020c700915be001d0d30301db3c0371b08e1e33038020d721d200019202a59301a558e202d102c8cb1fcb1fcb1fc9ed54e004d72c20c9db1e6c965f05840ff2f0e30de1f4a413f4bcf2c80b05010401b003fa4030f82322bbf2e57203d20030209204a49402a44014e25802c8cb1fcb1fcb1fc9ed540101c8f828cf1601cf16c98876c8cb04ccccc9768018c8cb0522f9008309c8cb0acbffc9d0cf16cb6fcc0101ca00c98040fb00020114ff00f4a413f4bcf2c80b030062d3c7009130e0d0d3030171b09130e0fa4030ed44d0fa405112c705f2e3e7d70b01c000f2d4bcc801cf167001cb01c9ed54010fa64e58b6cf1b04a0050014ed44d0d31fd31fd31fd12d2f66d0} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c724101060100e50002f8ff00208eee3020c700915be001d0d30301028020d7210271b08e2330ed44d001d20001319dd33f01a5c8cb3f01cf16c9ed549ad35f30a5c8cb5fc9ed54e2e0fa4030ed44d020f82302d31f3012bbf2e57202d30030209e02d33f01a4c8cb3f01cf16c9ed549b02d35f30a4c8cb5fc9ed54e201e1f4a413f4bcf2c80b0105015201c8f828cf1601cf16c98876c8cb04ccccc901a60c21f9008200c400c8cb10cbffcb70ccc98040fb00020114ff00f4a413f4bcf2c80b030128d330d0d3030130fa4030ed44d001d7263088ed5404000120001fa64e58bb5134200835c874c7f4c7cc206f36e323} B>boc PUSHREF }
 
 
 // and sources of child contract code
 // #include "imports/stdlib.fc";
-//
-//() reply(slice to, slice owner, slice message) impure inline {
-//    cell msg2sender = begin_cell()
-//        .store_uint(0x10, 6)
-//        .store_slice(to)
-//        .store_uint(1, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32)) ;; op code 1
-//        .store_slice(owner) ;; owner address
-//        .store_slice(message) ;; the bit, describing minus or plus
-//        .end_cell();
-//    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
-//}
-//() reply_msg(slice to, int message, int length) impure inline {
-//    cell msg2sender = begin_cell()
-//        .store_uint(0x10, 6)
-//        .store_slice(to)
-//        .store_uint(message, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + length)) ;; 32 bits empty (comment padding) and length - length of comment
-//        .end_cell();
-//    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
-//}
+//(slice, ()) check_if_starts_with(slice input, slice starts_with) impure asm "SDBEGINSX";
 //
 //() recv_internal(cell in_msg_full, slice in_msg_body) impure {
-//    if (in_msg_body.slice_empty?()) {
-//        ;; ignore all empty messages
-//        return ();
-//    }
 //    slice cs = in_msg_full.begin_parse();
 //    int flags = cs~load_msg_flags();
-//    if (flags & 1) {
-//        ;; ignore all bounced messages
-//        return ();
-//    }
 //    slice sender_address = cs~load_msg_addr();
-//    cell data = get_data();
-//    slice data_getter = data.begin_parse();
-//    ;; check that sender is master
-//    throw_unless(999, equal_slices_bits(data_getter~load_msg_addr(), sender_address));
-//    ;; check if already voted
-//    throw_if(1212, is_address_none(data_getter));
+//    slice data_getter = get_data().begin_parse();
+//    data_getter~check_if_starts_with(sender_address);
 //    set_data(
-//        begin_cell()
-//            .store_slice(sender_address)
-//            .store_address_none() ;; store the status as null address
-//            .end_cell()
+//        address_none_cell()
 //    );
 //
 //}

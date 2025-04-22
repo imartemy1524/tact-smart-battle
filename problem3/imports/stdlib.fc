@@ -694,6 +694,7 @@ builder store_address_none(builder b) inline {
 }
 
 slice address_none() asm "<b 0 2 u, b> <s PUSHSLICE";
+cell address_none_cell() asm "<b 0 2 u, b> PUSHREF";
 
 int is_address_none(slice s) inline {
     return s.preload_uint(2) == 0;

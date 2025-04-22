@@ -1,35 +1,5 @@
 #include "./imports/stdlib.fc";
 #include "_compiled_code.fc";
-(slice, int) check_if_opcode$1(slice input) asm "x{00000001} SDBEGINSQ";
-(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
-
-(int, int, int) load_data() inline_ref {
-    cell data = get_data();
-    var cs = data.begin_parse();
-    int votingEndingAt = cs~load_uint(32);
-    int yesCount = cs~load_uint(32);
-    int noCount = cs~load_uint(32);
-    cs.end_parse();
-    return (votingEndingAt, yesCount, noCount);
-}
-() save_data(int votingUntil, int yescount, int nocount) impure inline {
-    set_data(
-        begin_cell()
-            .store_uint(votingUntil, 32)
-            .store_uint(yescount, 32)
-            .store_uint(nocount, 32)
-            .end_cell()
-    );
-}
-() reply_msg(slice to, int message, int length) impure inline {
-    cell msg2sender = begin_cell()
-        .store_uint(0x10, 6)
-        .store_slice(to)
-        .store_uint(message, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + length)) ;; 32 bits empty (comment padding) and length - length of comment
-        .end_cell();
-    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
-}
-
 cell child_state_init(slice owner) inline {
     return begin_cell()
         .store_uint(6, 5)
@@ -42,67 +12,79 @@ cell child_state_init(slice owner) inline {
         )
         .end_cell();
 }
-slice calculate_child_address(cell state_init) inline {
-    return begin_cell().store_uint(1024, 11)
-        .store_uint(cell_hash(state_init), 256)
-        .end_cell()
-        .begin_parse();
-}
-
 () deploy_child(slice sender_address, int value) impure inline {
     cell state_init = child_state_init(sender_address);
     cell message = begin_cell()
-        .store_uint(BOUNCEABLE, 6)
-        .store_slice(calculate_child_address(state_init))
-        .store_uint(MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
+        .store_uint((BOUNCEABLE << 11) + 1024, 6 + 11)
+        .store_uint(cell_hash(state_init), 256)
+    ;; .store_slice(calculate_child_address(state_init))
+        .store_uint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0) << 1) + value, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4 + 1)
         .store_ref(state_init)
-        .store_bool(value)
         .end_cell();
     send_raw_message(message, SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 
 }
 
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) {
-        ;; ignore all empty messages
-        return ();
-    }
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_msg_flags();
-    (int votingUntil, int yescount, int nocount) = load_data();
+    in_msg_body~skip_op();
+
     if (flags & 1) {
-        in_msg_body~skip_bounced_prefix();
+        slice data = get_data().begin_parse();
         int istrue = in_msg_body~load_bool();
         if (istrue) {
-            yescount -= 1;
-        } else {
-            nocount -= 1;
+            set_data(
+                begin_cell()
+                .store_uint(data~load_uint(64) - 1, 64)
+                .store_slice(data)
+                .end_cell()
+            );
+            ;; save_data(votingUntil, yescount - 1, nocount);
         }
-        in_msg_body.end_parse();
-        save_data(votingUntil, yescount, nocount);
+        else {
+            set_data(
+                begin_cell()
+                    .store_uint(data~load_uint(64 + 32) - 1, 64 + 32)
+                    .end_cell()
+            );
+            ;; save_data(votingUntil, yescount, nocount - 1);
+        }
         return ();
     }
-    elseif (in_msg_body~check_if_opcode$193b63cd()) {
-        slice sender_address = cs~load_msg_addr();
-        throw_unless(1394, now() <= votingUntil);
-        int value = in_msg_body~load_int(1);
-        if (value) {
-            yescount += 1;
-        } else {
-            nocount += 1;
-        }
-        save_data(votingUntil, yescount, nocount);
-        deploy_child(sender_address, value);
+    ;; elseif (in_msg_body~check_if_opcode$193b63cd()) {
+    slice sender_address = cs~load_msg_addr();
+    slice data = get_data().begin_parse();
+    slice data2 = data;
+    throw_unless(1394, now() <= data~load_uint(32));
+    int value = in_msg_body~load_uint(1);
+    if (value) {
+        int a = data2~load_uint(64) + 1;
+        set_data(
+                begin_cell()
+                    .store_uint(a, 64)
+                    .store_slice(data2)
+                    .end_cell()
+        );
     }
     else {
-        throw(0xffff);
+        set_data(
+            begin_cell()
+                .store_uint(data2~load_uint(64 + 32) + 1, 64 + 32)
+                .end_cell()
+        );
     }
-
+    deploy_child(sender_address, value);
 }
 
 _ proposalState() method_id {
-    (int _aa, int yes_count, int no_count) = load_data();
-    return (yes_count, no_count);
+    slice s = get_data().begin_parse();
+    s~skip_bits(32);
+
+    return (
+        s~load_uint(32),
+        s~load_uint(32)
+    );
 }
 () __tact_selector_hack_asm() impure asm """
 @atend @ 1 {

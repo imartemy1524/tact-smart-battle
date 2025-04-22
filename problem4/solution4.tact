@@ -16,28 +16,23 @@ inline fun packStateInit(init: StateInit): Cell{
     return beginCell()
     .storeUint(0b110, 5)
     .storeRef(init.code)
-    .storeRef(init.data);
+    .storeRef(init.data)
+    .endCell();
 
 }
-inline fun contractAddressPacked(packed: Cell): Slice{
-    return beginCell()
-    .storeUint(1024, 11)
-    .storeUint(packed.hash(), 256)
-    .endCell()
-    .beginParse()
-}
+
 
 contract ProposalMaster {
     id: Int as uint32 = 0;
     // top up
     receive() {
         if(context().value > ton("0.01")){
-            nativeReserve(ton("0.01"), ReserveAtMost);
+            nativeReserve(ton("0.01"),  ReserveAddOriginalBalance);
             send(SendParameters{
                 to: sender(),
                 value: 0,
                 bounce: false,
-                mode: SendRemainingBalance
+                mode: SendRemainingBalance | SendIgnoreErrors
             })
         }
     }
@@ -47,14 +42,13 @@ contract ProposalMaster {
         let state = initOf Proposal(ProposalInit{master: myAddress(), proposalId: self.id});
         self.id += 1;
         let state_init_packed = packStateInit(state);
-        let addr = contractAddressPacked(state_init_packed);
         sendRawMessag(
             beginCell()
-                .storeUint(0x10, 6)
-                .storeSlice(addr)
-                .storeUint(MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
                 .storeRef(state_init_packed)
-                .storeUint(msg.votingEndingAt, 32)
+                .storeUint((0x10 << 11) + 1024, 6 + 11)
+                .storeUint(state_init_packed.hash(), 256)
+                .storeUint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF ) << 32) + msg.votingEndingAt, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4 + 32)
+                .storeAddress(sender())
                 .endCell(),
             SendRemainingValue
         );
@@ -78,30 +72,29 @@ struct ProposalState {
     proposalId: Int as uint32;
     votingEndingAt: Int as uint32;
 }
+inline fun replyOk(to: Slice) {
+    let msg2sender = beginCell()
+    .storeUint(0x10, 6)
+    .storeSlice(to)
+    .storeUint(0x6f6b, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + 16)) // 32 bits empty (comment padding) and length (16 bit)
+    .endCell();
+    sendRawMessag(msg2sender, SendRemainingValue);
+}
 
-contract Proposal {
-    votingEndingAt: Int as uint32 = 0;
-    yesCount: Int as uint32 = 0;
-    noCount: Int as uint32 = 0;
-    master: Address;
-    proposalId: Int as uint32;
-    dictWithData: Bool = false;
-    init(data: ProposalInit){
-        self.master = data.master;
-        self.proposalId = data.proposalId;
-    }
+contract Proposal(data: ProposalInit) {
 
     receive(m: Slice){
-        nativeThrowUnless(2025, sender() == self.master);
+        nativeThrowUnless(2025, sender() == self.data.master);
         setData(
-        beginCell()
-            .storeSlice(m)
-            .storeUint(0, 64)
-            .storeAddress(self.master)
-            .storeUint(self.proposalId, 32)
-            .storeBit(false)
-            .endCell()
+            beginCell()
+                .storeSlice(m.loadBits(32))
+                .storeUint(0, 65)
+                .storeAddress(self.data.master)
+                .storeUint(self.data.proposalId, 32)
+                .endCell()
         );
+        replyOk(m);
+
         setCode(actual_code());
         commit();
         throw(0);
@@ -127,7 +120,6 @@ asm extends fun storeDict(self: Builder, dict: Cell): Builder { SWAP STDICT }
 
 asm fun sendRawMessag(msg: Cell, flags: Int) { SENDRAWMSG }
 
-// source code (func):
 // #include "./imports/stdlib.fc";
 //const const::min_amount = 10000000; ;; 0.01 ton
 //(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
@@ -183,10 +175,8 @@ asm fun sendRawMessag(msg: Cell, flags: Int) { SENDRAWMSG }
 //        (int chain, int address) = parse_std_addr(sender_address);
 //        ;; force 0 chain
 //        throw_if(1396, chain);
-//        (cell _tt, int found) = dict.udict_get_ref?(256, address);
-//        throw_if(1397, found);
-//        dict~udict_set_ref(256, address, empty_cell());
-//
+//        cell prev = dict~udict_set_get_ref(256, address, empty_cell());
+//        throw_unless(1397, cell_null?(prev));
 //        int value = in_msg_body~load_int(1);
 //        if (value) {
 //            yes_count += 1;
@@ -238,4 +228,4 @@ asm fun sendRawMessag(msg: Cell, flags: Int) { SENDRAWMSG }
 //() __tact_selector_hack() method_id (65535) {
 //    return __tact_selector_hack_asm();
 //}
-asm fun actual_code(): Cell { B{b5ee9c724101040100ea0002a2ff00208ec33032d0d3030171b0915be0fa403021c700915be071ed44d0d31fd31fd31ffa40d31f069405f4043092356de210451034413007d72c20c9db1e6c965f08840ff2f0e30de1f4a413f4bcf2c80b010301d2f82326bbf2e5725343a0c164f2e57326fa4401f2d57453088307f40f6fa131f2d5758840198307f41707d200309203a49402a44013e20405413605c8cb1f14cb1f12cb1f01cf16cb1ff400c9ed54816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb000200000049a64e589c3b513434c7f4c7f4c7fe9034c7c1a5017d010c248d5b788411440d104c0c1540e0679346de} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c724101040100d7000274ff00208eac3001d0d3030130fa4030ed44d0d31fd31fd31ff404fa40d31f305807d72c20c9db1e6c965f08840ff2f0e30de1f4a413f4bcf2c80b010301f4f82326bbf2e5725343a0c164f2e57326fa44318840198307f46f6ef2e57506816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb0006d200308e1b02a41035503405c8cb1f14cb1f12cb1f13f40058cf16cb1fc9ed548e1c01a4103544330205c8cb1f14cb1f12cb1f13f40058cf16cb1fc9ed54e2020000002fa64e58bb513434c7f4c7f4c7fd013e9034c7cc160c1540e0ea5d387f} B>boc PUSHREF }

@@ -1,5 +1,5 @@
 import '@ton/test-utils';
-import { Blockchain } from '@ton/sandbox';
+import { Blockchain, printTransactionFees } from '@ton/sandbox';
 import { toNano } from '@ton/core';
 import { Proposal } from '../output/solution4_Proposal';
 import { ProposalMaster } from '../output/solution4_ProposalMaster';
@@ -24,7 +24,8 @@ it('solution4', async () => {
 
     // create proposal
     const currentTime = BigInt(Math.floor(Date.now() / 1000));
-    await proposalMaster.send(
+    const at = currentTime + 24n * 60n * 60n;
+    const {transactions} = await proposalMaster.send(
         masterDeployer.getSender(),
         {
             value: toNano('0.1'),
@@ -32,9 +33,10 @@ it('solution4', async () => {
         },
         {
             $$type: 'DeployNewProposal',
-            votingEndingAt: currentTime + 24n * 60n * 60n,
+            votingEndingAt: at,
         },
     );
+    printTransactionFees(transactions)
 
     // vote
     const voter = await blockchain.treasury('voter');
@@ -50,10 +52,35 @@ it('solution4', async () => {
         { value: toNano('0.1') },
         {
             $$type: 'Vote',
+            value: false,
+        },
+    );
+    await proposal.send(
+        (await blockchain.treasury("ty")).getSender(),
+        { value: toNano('0.1') },
+        {
+            $$type: 'Vote',
+            value: false,
+        },
+    );
+    await proposal.send(
+        (await blockchain.treasury("ty1")).getSender(),
+        { value: toNano('0.1') },
+        {
+            $$type: 'Vote',
             value: true,
         },
     );
-
+    await proposal.send(
+        (await blockchain.treasury("ty1")).getSender(),
+        { value: toNano('0.1') },
+        {
+            $$type: 'Vote',
+            value: true,
+        },
+    );
+    const obj = await proposal.getProposalState();
+    console.log(obj)
     // the vote was counted
-    expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+    expect(obj).toMatchObject({ yesCount: 1n, noCount: 2n, votingEndingAt:at});
 });

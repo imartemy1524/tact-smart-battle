@@ -28,7 +28,7 @@ async function replaceConstantInTactFile(codeToReplace: Cell) {
     const code = codeToReplace.toBoc().toString("hex");
     try {
         // Read the file asynchronously
-        const filePath = 'solution.tact';
+        const filePath = 'solution4.tact';
         let content = await fs.promises.readFile(filePath, 'utf-8');
 
         // Replace the blablabla with constant f
