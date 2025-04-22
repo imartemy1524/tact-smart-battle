@@ -2,6 +2,7 @@
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 int sum2hack(int a, int b) asm "DIVMOD ADD";
 int inc(int a) asm "INC";
+(slice, int) check_if_1(slice input) asm "<b 0 1 u, b> <s SDBEGINSQ";
 
 (int, int, int, slice, int) load_data() inline {
     cell data = get_data();
@@ -22,7 +23,7 @@ int inc(int a) asm "INC";
     }
     in_msg_body~skip_op();
     slice cs = in_msg_full.begin_parse();
-    int flags = cs~load_msg_flags();
+    cs~load_msg_flags();
     slice sender_address = cs~load_msg_addr();
     slice data = get_data().begin_parse();
     slice data0 = data;
@@ -48,7 +49,8 @@ int inc(int a) asm "INC";
             .store_slice(data)
             .end_cell()
         );
-    } else {
+    }
+    else {
         int a = inc(
             data0~load_uint(64 + 32)
         );

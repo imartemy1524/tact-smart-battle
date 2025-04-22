@@ -1,5 +1,12 @@
 #include "./imports/stdlib.fc";
 #include "_compiled_code.fc";
+slice calculate_child_address(cell state_init) inline {
+    return begin_cell().store_uint(1024, 11)
+        .store_uint(cell_hash(state_init), 256)
+        .end_cell()
+        .begin_parse();
+}
+
 cell child_state_init(slice owner) inline {
     return begin_cell()
         .store_uint(6, 5)
@@ -12,13 +19,14 @@ cell child_state_init(slice owner) inline {
         )
         .end_cell();
 }
-() deploy_child(slice sender_address, int value) impure inline {
+() deploy_child(slice sender_address, slice value) impure inline {
     cell state_init = child_state_init(sender_address);
     cell message = begin_cell()
         .store_uint((BOUNCEABLE << 11) + 1024, 6 + 11)
         .store_uint(cell_hash(state_init), 256)
     ;; .store_slice(calculate_child_address(state_init))
-        .store_uint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0) << 1) + value, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4 + 1)
+        .store_uint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0)), MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
+        .store_slice(value)
         .store_ref(state_init)
         .end_cell();
     send_raw_message(message, SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
@@ -28,15 +36,20 @@ cell child_state_init(slice owner) inline {
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_msg_flags();
-    in_msg_body~skip_op();
+    slice sender_address = cs~load_msg_addr();
+    int op = in_msg_body~load_op();
 
-    if (flags & 1) {
-        slice data = get_data().begin_parse();
+    if (op == 1) {
+        slice sender = in_msg_body~load_msg_addr();
         int istrue = in_msg_body~load_bool();
+        throw_unless(1394, equal_slices_bits(
+            sender_address, calculate_child_address(child_state_init(sender))
+        ));
+        slice data = get_data().begin_parse();
         if (istrue) {
             set_data(
                 begin_cell()
-                .store_uint(data~load_uint(64) - 1, 64)
+                .store_uint(data~load_uint(64) + 1, 64)
                 .store_slice(data)
                 .end_cell()
             );
@@ -45,7 +58,7 @@ cell child_state_init(slice owner) inline {
         else {
             set_data(
                 begin_cell()
-                    .store_uint(data~load_uint(64 + 32) - 1, 64 + 32)
+                    .store_uint(data~load_uint(64 + 32) + 1, 64 + 32)
                     .end_cell()
             );
             ;; save_data(votingUntil, yescount, nocount - 1);
@@ -53,28 +66,27 @@ cell child_state_init(slice owner) inline {
         return ();
     }
     ;; elseif (in_msg_body~check_if_opcode$193b63cd()) {
-    slice sender_address = cs~load_msg_addr();
     slice data = get_data().begin_parse();
     slice data2 = data;
     throw_unless(1394, now() <= data~load_uint(32));
-    int value = in_msg_body~load_uint(1);
-    if (value) {
-        int a = data2~load_uint(64) + 1;
-        set_data(
-                begin_cell()
-                    .store_uint(a, 64)
-                    .store_slice(data2)
-                    .end_cell()
-        );
-    }
-    else {
-        set_data(
-            begin_cell()
-                .store_uint(data2~load_uint(64 + 32) + 1, 64 + 32)
-                .end_cell()
-        );
-    }
-    deploy_child(sender_address, value);
+    ;; int value = in_msg_body~load_uint(1);
+    ;; if (value) {
+    ;;     int a = data2~load_uint(64) + 1;
+    ;;     set_data(
+    ;;             begin_cell()
+    ;;                 .store_uint(a, 64)
+    ;;                 .store_slice(data2)
+    ;;                 .end_cell()
+    ;;     );
+    ;; }
+    ;; else {
+    ;;     set_data(
+    ;;         begin_cell()
+    ;;             .store_uint(data2~load_uint(64 + 32) + 1, 64 + 32)
+    ;;             .end_cell()
+    ;;     );
+    ;; }
+    deploy_child(sender_address, in_msg_body);
 }
 
 _ proposalState() method_id {

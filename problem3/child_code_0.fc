@@ -1,0 +1,22 @@
+#include "imports/stdlib.fc";
+(slice, ()) check_if_starts_with(slice input, slice starts_with) impure asm "SDBEGINSX";
+() reply_msg(slice to, int message, int length) impure inline {
+    cell msg2sender = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(to)
+        .store_uint(message, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + length)) ;; 32 bits empty (comment padding) and length - length of comment
+        .end_cell();
+    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
+}
+() recv_internal(cell in_msg_full, slice _) impure {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_msg_flags();
+    slice sender_address = cs~load_msg_addr();
+    slice data_getter = get_data().begin_parse();
+    data_getter~check_if_starts_with(sender_address);
+    set_data(
+        address_none_cell()
+    );
+    ;; reply_msg(data_getter, 0, 0);
+
+}

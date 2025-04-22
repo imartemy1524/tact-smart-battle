@@ -1,4 +1,5 @@
 #include "./imports/stdlib.fc";
+
 () reply_msg(slice to, int message, int length) impure inline {
     cell msg2sender = begin_cell()
         .store_uint(0x10, 6)
@@ -31,10 +32,8 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
     throw_unless(1395, sum2hack(cs~load_uint(64), 1 << 32) < 100);
     (int chain, int address) = parse_std_addr(sender_address);
     cell dict = cs~load_dict();
-    cell prev = dict~udict_set_get_ref(256, address, empty_cell());
-    throw_unless(1397, cell_null?(prev));
-    int value = in_msg_body~load_int(1);
-    if (value) {
+    dict~udict_set_ref(256, address, empty_cell());
+    ifnot (in_msg_body~load_bool()) {
         int b = inc(cs0~load_uint(64));
         set_data(
             begin_cell()
@@ -44,7 +43,8 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
             .end_cell()
         );
 
-    } else {
+    }
+    else {
         var a = cs0~load_uint(64 + 32);
         set_data(
             begin_cell()

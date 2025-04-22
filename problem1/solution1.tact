@@ -17,8 +17,7 @@ contract Proposal {
     init(data: Init) {
         setData(
             beginCell()
-                .storeUint(data.votingEndingAt, 32)
-                .storeUint(0, 65)
+                .storeUint((data.votingEndingAt << 65), 32 + 65)
                 .endCell()
         );
         setCode(actual_code());
@@ -55,6 +54,8 @@ asm fun parse_std_addr(s: Address): Addr {
     REWRITESTDADDR
 }
 // #include "./imports/stdlib.fc";
+//(slice, int) check_if_0(slice input) asm "<b 0 1 u, b> <s SDBEGINSQ";
+//
 //() reply_msg(slice to, int message, int length) impure inline {
 //    cell msg2sender = begin_cell()
 //        .store_uint(0x10, 6)
@@ -87,10 +88,8 @@ asm fun parse_std_addr(s: Address): Addr {
 //    throw_unless(1395, sum2hack(cs~load_uint(64), 1 << 32) < 100);
 //    (int chain, int address) = parse_std_addr(sender_address);
 //    cell dict = cs~load_dict();
-//    cell prev = dict~udict_set_get_ref(256, address, empty_cell());
-//    throw_unless(1397, cell_null?(prev));
-//    int value = in_msg_body~load_int(1);
-//    if (value) {
+//    dict~udict_set_ref(256, address, empty_cell());
+//    ifnot (in_msg_body~check_if_0()) {
 //        int b = inc(cs0~load_uint(64));
 //        set_data(
 //            begin_cell()
@@ -100,7 +99,8 @@ asm fun parse_std_addr(s: Address): Addr {
 //            .end_cell()
 //        );
 //
-//    } else {
+//    }
+//    else {
 //        var a = cs0~load_uint(64 + 32);
 //        set_data(
 //            begin_cell()
@@ -147,4 +147,4 @@ asm fun parse_std_addr(s: Address): Addr {
 //() __tact_selector_hack() method_id (65535) {
 //    return __tact_selector_hack_asm();
 //}
-asm fun actual_code(): Cell { B{b5ee9c724101040100a80003eeff00208f693001d0d3030130fa4030018020d721ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57323fa443101f4043088598307f46f6ef2e57502d200308e12d33f01a4c8cb3f01d61f30cf16f400c9ed549cd35f30a4c8cb5ff400c9ed54e2816f6b8010e1f4a413f4bcf2c80b0102030000002c8010c8cb055003cf1602a620a66f12cf01c98042fb00001fa64e58bb5134200835c874c7f4c7cc2099ef2f0e} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c724101040100a400021aff0020e303f4a413f4bcf2c80b010301f83001d0d3030130fa4030018020d721ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57323fa443101f4043088598307f41702d20001319cd35f30a4c8cb5ff400c9ed548e12d33f01a4c8cb3f01d61f30cf16f400c9ed54e2816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb00020000001fa64e58bb5134200835c874c7f4c7cc20d827e558} B>boc PUSHREF }

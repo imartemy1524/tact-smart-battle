@@ -40,7 +40,7 @@
     slice owner_address = data_getter~load_msg_addr();
     ifnot (slice_empty?(data_getter)) {
         ;; already deployed, throw message back
-;;        reply(sender_address, owner_address, in_msg_body);
+        reply(sender_address, owner_address, in_msg_body);
         commit();
         throw(1212);
     }
@@ -51,7 +51,6 @@
                 .store_int(TRUE, 1) ;; store the bit
                 .end_cell()
         );
-        reply(sender_address, owner_address, in_msg_body);
-;;        reply_msg(owner_address, "ok"u, 2 * 8);
+        reply_msg(owner_address, "ok"u, 2 * 8);
     }
 }

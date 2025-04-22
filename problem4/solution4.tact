@@ -20,6 +20,15 @@ inline fun packStateInit(init: StateInit): Cell{
     .endCell();
 
 }
+inline fun replyOk2(to: Address) {
+    let msg2sender = beginCell()
+    .storeUint(0x10, 6)
+    .storeAddress(to)
+    .storeUint(0x6f6b, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + 16)) // 32 bits empty (comment padding) and length (16 bit)
+    .endCell();
+    sendRawMessag(msg2sender, SendRemainingBalance | SendIgnoreErrors);
+}
+
 
 
 contract ProposalMaster {
@@ -28,12 +37,7 @@ contract ProposalMaster {
     receive() {
         if(context().value > ton("0.01")){
             nativeReserve(ton("0.01"),  ReserveAddOriginalBalance);
-            send(SendParameters{
-                to: sender(),
-                value: 0,
-                bounce: false,
-                mode: SendRemainingBalance | SendIgnoreErrors
-            })
+            replyOk2(sender());
         }
     }
 
@@ -94,7 +98,6 @@ contract Proposal(data: ProposalInit) {
                 .endCell()
         );
         replyOk(m);
-
         setCode(actual_code());
         commit();
         throw(0);
@@ -227,4 +230,4 @@ asm fun sendRawMessag(msg: Cell, flags: Int) { SENDRAWMSG }
 //() __tact_selector_hack() method_id (65535) {
 //    return __tact_selector_hack_asm();
 //}
-asm fun actual_code(): Cell { B{b5ee9c724101060100d000021aff0020e303f4a413f4bcf2c80b010503f83001d0d3030130fa403001d72c20c9db1e6c8f68ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57323fa443101f4043088598307f46f6ef2e57503816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb0001d200308e15d35f01a401f4043101c8cb5f12f40001cf16c9ed54e30d02030400000032d33f01a401d31ff4043102c8cb3fcb1f12f40001cf16c9ed54000ce05b840ff2f0002da64e58bb513434c7f4c7f4c7fd010c7e9034c7cc1540e02c04c7e3} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c724101060100d100021aff0020e303f4a413f4bcf2c80b010503f830d72c20c9db1e6c8f7201d0d3030130fa4030ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57322fa443101f4043088598307f46f6ef2e57502816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb0002d200308e1601d35f01a401f4043101c8cb5f12f40001cf16c9ed54e30d0203040000003401d33f01a401d31ff4043102c8cb3fcb1f12f40001cf16c9ed54000ce05b840ff2f0002da64e58bb513434c7f4c7f4c7fd010c7e9034c7cc1540e00461ec50} B>boc PUSHREF }

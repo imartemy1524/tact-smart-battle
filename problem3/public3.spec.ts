@@ -1,6 +1,6 @@
 import '@ton/test-utils';
 import { Blockchain, printTransactionFees } from '@ton/sandbox';
-import { Cell, toNano } from '@ton/core';
+import { Cell, Slice, toNano } from '@ton/core';
 import { Proposal } from '../output/solution3_Proposal';
 import {compileFunc} from '@ton-community/func-js';
 import * as fs from 'fs';
@@ -37,7 +37,6 @@ it('solution3', async () => {
             value: true,
         },
     );
-    printTransactionFees(transactions2);
 
     // the vote was counted
     expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
@@ -50,6 +49,7 @@ it('solution3', async () => {
                 value: true,
             },
         );
+        printTransactionFees(transactions)
         expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
     }
     {
@@ -73,6 +73,17 @@ it('solution3', async () => {
                 value: false,
             },
         );
+        const data = await blockchain.getContract(proposal.address)
+        if(data.accountState!.type !== "active") throw "not active";
+        console.log("Bits: ", calcBits(data.accountState!.state.data!.asSlice()));
+
         expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 1n });
     }
 });
+function calcBits(cell: Slice): number {
+    let ans = cell.remainingBits;
+    while (cell.remainingRefs){
+        ans += calcBits(cell.loadRef()!.asSlice());
+    }
+    return ans;
+}

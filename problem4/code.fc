@@ -1,6 +1,8 @@
 #include "./imports/stdlib.fc";
 const const::min_amount = 10000000; ;; 0.01 ton
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
+(slice, int) starts_with_1(slice input) asm "x{193b63cd} SDBEGINSQ";
+
 () reply_msg(slice to, int message, int length) impure inline {
     cell msg2sender = begin_cell()
         .store_uint(0x10, 6)
@@ -25,10 +27,10 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
     return (votingEndingAt, yesCount, noCount, master, proposalId);
 }
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    slice cs = in_msg_full.begin_parse();
-    cs~load_msg_flags();
-    slice sender_address = cs~load_msg_addr();
     if (in_msg_body~check_if_opcode$193b63cd()) {
+        slice cs = in_msg_full.begin_parse();
+        cs~load_msg_flags();
+        slice sender_address = cs~load_msg_addr();
         slice data = get_data().begin_parse();
         slice data_original = data;
         throw_unless(1394, now() <= data~load_uint(32));
@@ -40,8 +42,7 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
         cell prev = dict~udict_set_get_ref(256, address, empty_cell());
         throw_unless(1397, cell_null?(prev));
         reply_msg(sender_address, "ok"u, 8 * 2);
-        int value = in_msg_body~load_int(1);
-        if (value) {
+        if (in_msg_body~starts_with_1()) {
 
             int b = data_original~load_uint(64) + 1;
             int c = data_original~load_uint(32);

@@ -2,14 +2,6 @@ message Vote { value: Bool;}
 struct ProposalState { yesCount: Int as uint32;noCount: Int as uint32;}
 struct Init { proposalId: Int as uint32; votingEndingAt: Int as uint32;}
 message(0x1234) OnError{ owner: Address; vote: Bool;}
-struct Addr{
-    chain: Int;
-    hash: Int;
-}
-struct DivModRes{
-    res: Int;
-    mod: Int;
-}
 const none: Cell = cell("te6cckEBAQEAggAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCdJzEQ==");
 inline fun buildFilter(depth: Int): Cell{
     if(depth == 0) {
@@ -25,7 +17,6 @@ inline fun buildFilter(depth: Int): Cell{
 }
 mutates extends inline fun setValueAt(self: Cell, index: Int, depth: Int): Bool{
     if(depth == 0){
-        dump(index, depth);
         let orig = self;
         let orig2 = orig.beginParse();
         let a = index % 1023;
@@ -53,6 +44,7 @@ mutates extends inline fun setValueAt(self: Cell, index: Int, depth: Int): Bool{
     self = ans.endCell();
     return modified;
 }
+
 contract Proposal {
 
     init(data: Init) {
@@ -68,19 +60,17 @@ contract Proposal {
         commit();
         throw(0);
     }
-    receive(){}
+    receive(){
+        throw(123);
+    }
 
     receive(msg: Vote) {
-        if(context().value < ton("0.1")){
-            throw(937);
-        }
         let parser = getData().beginParse();
         let parser0 = getData().beginParse();
         parser.skipBits(1);
         nativeThrowIf(123, parser.loadUint(32) < now());
-        //        nativeThrowIf(124, sum2(parser.loadUint(64), 1<<32) >= 100);
-        let ___q = parse_std_addr(sender());
-        let hash = ___q.hash;
+        let ___q = (sender()).asSlice().hash();
+        let hash = ___q; //___q.hash;
         let item = parser.loadRef();
         let changed = true;
         repeat(7){
@@ -93,29 +83,42 @@ contract Proposal {
         require(!changed, "Already exists");
         setData(
             beginCell()
-                .storeSlice(parser0.loadBits(33))
-                .storeUint(parser0.loadUint(32) + (msg.value ? 1 : 0), 32)  // store uint32 + uint32 + dict(none)
-                .storeUint(parser0.loadUint(32) + (msg.value ? 0 : 1), 32)  // store uint32 + uint32 + dict(none)
-                .storeRef(item)
-                .endCell()
+            .storeSlice(parser0.loadBits(33))
+            .storeUint(parser0.loadUint(32) + (!changed && msg.value ? 1 : 0), 32)  // store uint32 + uint32 + dict(none)
+            .storeUint(parser0.loadUint(32) + (msg.value || changed ? 0 : 1), 32)  // store uint32 + uint32 + dict(none)
+            .storeRef(item)
+            .endCell()
         );
-        self.reply("ok".asComment());
         commit();
         throw(0);
     }
 
     get fun proposalState(): ProposalState {
-        let p = getData().beginParse();
-        p.skipBits(33);
-        return ProposalState{
-        yesCount: p.loadUint(32),
-        noCount: p.loadUint(32)
-        };
+        let cs = getData().beginParse();
+        cs.skipBits(33);
+        let a = cs.loadUint(32);
+        let b = cs.loadUint(32);
+        return ProposalState{yesCount: a, noCount: b};
     }
 
 }
-asm extends fun refAt(self: Slice, index: Int): Cell{
-    PLDREFVAR
+contract Boba(r: Address){
+    receive("ok"){
+        // pass
+    }
+}
+
+
+asm fun parse_std_addr(s: Address): Addr {
+    REWRITESTDADDR
+}
+struct Addr{
+    chain: Int;
+    hash: Int;
+}
+struct DivModRes{
+    res: Int;
+    mod: Int;
 }
 asm fun sum2(a: Int, mod: Int): Int {
     DIVMOD ADD
@@ -126,6 +129,3 @@ asm fun divmod(a: Int, mod: Int): DivModRes {
 asm fun setCode(code: Cell) { SETCODE }
 asm fun setData(code: Cell) { c4 POP }
 asm fun getData(): Cell { c4 PUSH }
-asm fun parse_std_addr(s: Address): Addr {
-    REWRITESTDADDR
-}

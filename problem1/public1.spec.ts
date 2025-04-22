@@ -25,26 +25,29 @@ it('solution1', async () => {
         null, // empty message, handled by `receive()` without parameters
     );
 
-    // vote
-    const voter = await blockchain.treasury('voter');
-    const {transactions} = await proposal.send(
-        voter.getSender(),
-        { value: toNano('0.1') },
-        {
-            $$type: 'Vote',
-            value: true,
-        },
-    );
-    const {transactions: tr2} = await proposal.send(
-        (await blockchain.treasury('voter2')).getSender(),
-        { value: toNano('0.1') },
-        {
-            $$type: 'Vote',
-            value: false,
-        },
-    );
-    console.log(fromNano(tr2[1].totalFees.coins));
+    for (let i = 0; i < 50; i++) {
+        // vote
+        const voter = await blockchain.treasury('voter' + i);
+        const { transactions } = await proposal.send(
+            voter.getSender(),
+            { value: toNano('0.1') },
+            {
+                $$type: 'Vote',
+                value: true,
+            },
+        );
+        if(i != 49)
+        await proposal.send(
+            (await blockchain.treasury('avoter' + i)).getSender(),
+            { value: toNano('0.1') },
+            {
+                $$type: 'Vote',
+                value: false,
+            },
+        );
+    }
+    //     console.log(fromNano(tr2[1].totalFees.coins));
     const state = await proposal.getProposalState();
     // the vote was counted
-    expect(state).toMatchObject({ yesCount: 1n, noCount: 1n });
+    expect(state).toMatchObject({ yesCount: 50n, noCount: 49n });
 });
