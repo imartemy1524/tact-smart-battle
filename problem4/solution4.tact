@@ -132,66 +132,65 @@ asm fun sendRawMessag(msg: Cell, flags: Int) { SENDRAWMSG }
 //    send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 //}
 //
-//(int, int, int, slice, int, cell) load_data(int load_dictt) inline {
+//(int, int, int, slice, int, cell) load_data() inline {
 //    cell data = get_data();
 //    var cs = data.begin_parse();
 //
 //    int votingEndingAt = cs~load_uint(32);
 //    int yesCount = cs~load_uint(32);
 //    int noCount = cs~load_uint(32);
+//
+//    cell dict = cs~load_dict();
 //    slice master = cs~load_msg_addr();
 //    int proposalId = cs~load_uint(32);
-//    cell dict = load_dictt ? cs~load_dict() : null();
 //    return (votingEndingAt, yesCount, noCount, master, proposalId, dict);
 //}
-//() save_data(int votingUntil, int yescount, int nocount, slice master, int proposalId, cell dict) impure inline {
-//    set_data(
-//        begin_cell()
-//            .store_uint(votingUntil, 32)
-//            .store_uint(yescount, 32)
-//            .store_uint(nocount, 32)
-//            .store_slice(master)
-//            .store_uint(proposalId, 32)
-//            .store_dict(dict)
-//            .end_cell()
-//    );
-//}
-//() recv_internal(int value, cell in_msg_full, slice in_msg_body) impure {
+//() recv_internal( cell in_msg_full, slice in_msg_body) impure {
 //    slice cs = in_msg_full.begin_parse();
-//    int flags = cs~load_msg_flags();
-//    if (flags & 1) {
-//        ;; ignore all bounced messages
-//        return ();
-//    }
+//    cs~load_msg_flags();
 //    slice sender_address = cs~load_msg_addr();
-//    if (in_msg_body.slice_empty?()) {
-//        ;; ignore empty messages
-//        return ();
-//    }
-//    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
+//    ;; (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data();
+//    ;; in_msg_body~skip_op();
 //    if (in_msg_body~check_if_opcode$193b63cd()) {
-//        throw_unless(1394, now() <= votingEndsAt);
-//        throw_unless(1395, yes_count + no_count < 100);
+//        slice data = get_data().begin_parse();
+//        slice data_original = data;
+//        throw_unless(1394, now() <= data~load_uint(32));
+//        throw_unless(1395, data~load_uint(32) + data~load_uint(32) < 100);
 //        (int chain, int address) = parse_std_addr(sender_address);
 //        ;; force 0 chain
-//        throw_if(1396, chain);
+//        ;; throw_if(1396, chain);
+//        cell dict = data~load_dict();
 //        cell prev = dict~udict_set_get_ref(256, address, empty_cell());
 //        throw_unless(1397, cell_null?(prev));
+//        reply_msg(sender_address, "ok"u, 8 * 2);
 //        int value = in_msg_body~load_int(1);
 //        if (value) {
-//            yes_count += 1;
+//
+//            int b = data_original~load_uint(64) + 1;
+//            int c = data_original~load_uint(32);
+//            data_original~load_bool();
+//            set_data(
+//            begin_cell()
+//                .store_uint(b, 64)
+//                .store_uint(c, 32)
+//                .store_dict(dict)
+//                .store_slice(data_original)
+//                .end_cell()
+//            );
+//
 //        } else {
-//            no_count += 1;
+//            int a = data_original~load_uint(32 * 3) + 1;
+//            data_original~load_bool();
+//
+//            set_data(
+//                begin_cell()
+//                    .store_uint(a, 64 + 32)
+//                    .store_dict(dict)
+//                    .store_slice(data_original)
+//                    .end_cell()
+//            );
 //        }
-//        save_data(
-//            votingEndsAt,
-//            yes_count,
-//            no_count,
-//            master,
-//            proposalId,
-//            dict
-//        );
-//        reply_msg(sender_address, "ok"u, 8 * 2);
+//
 //    }
 //    else {
 //        throw(0xffff);
@@ -200,7 +199,7 @@ asm fun sendRawMessag(msg: Cell, flags: Int) { SENDRAWMSG }
 //}
 //
 //_ proposalState() method_id {
-//    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(0);
+//    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data();
 //    return (yes_count, no_count, master, proposalId, votingEndsAt);
 //}
 //() __tact_selector_hack_asm() impure asm """
@@ -228,4 +227,4 @@ asm fun sendRawMessag(msg: Cell, flags: Int) { SENDRAWMSG }
 //() __tact_selector_hack() method_id (65535) {
 //    return __tact_selector_hack_asm();
 //}
-asm fun actual_code(): Cell { B{b5ee9c724101040100d7000274ff00208eac3001d0d3030130fa4030ed44d0d31fd31fd31ff404fa40d31f305807d72c20c9db1e6c965f08840ff2f0e30de1f4a413f4bcf2c80b010301f4f82326bbf2e5725343a0c164f2e57326fa44318840198307f46f6ef2e57506816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb0006d200308e1b02a41035503405c8cb1f14cb1f12cb1f13f40058cf16cb1fc9ed548e1c01a4103544330205c8cb1f14cb1f12cb1f13f40058cf16cb1fc9ed54e2020000002fa64e58bb513434c7f4c7f4c7fd013e9034c7cc160c1540e0ea5d387f} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c724101060100d000021aff0020e303f4a413f4bcf2c80b010503f83001d0d3030130fa403001d72c20c9db1e6c8f68ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57323fa443101f4043088598307f46f6ef2e57503816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb0001d200308e15d35f01a401f4043101c8cb5f12f40001cf16c9ed54e30d02030400000032d33f01a401d31ff4043102c8cb3fcb1f12f40001cf16c9ed54000ce05b840ff2f0002da64e58bb513434c7f4c7f4c7fd010c7e9034c7cc1540e02c04c7e3} B>boc PUSHREF }
