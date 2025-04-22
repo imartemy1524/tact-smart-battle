@@ -40,7 +40,6 @@ cell child_state_init(slice owner) inline {
     int op = in_msg_body~load_op();
 
     if (op == 1) {
-        slice sender = in_msg_body~load_msg_addr();
         int istrue = in_msg_body~load_bool();
         slice data = get_data().begin_parse();
         if (istrue) {
