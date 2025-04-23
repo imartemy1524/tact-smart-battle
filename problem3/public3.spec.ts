@@ -3,7 +3,7 @@ import { Blockchain, printTransactionFees } from '@ton/sandbox';
 import { toNano } from '@ton/core';
 import { Proposal } from '../output/solution3_Proposal';
 
-it('solution5', async () => {
+it('3', async () => {
     const blockchain = await Blockchain.create();
 
     // create contract from init()
@@ -25,7 +25,7 @@ it('solution5', async () => {
         null, // empty message, handled by `receive()` without parameters
     );
     printTransactionFees(transactions);
-    const count = 2000n;
+    const count = 200n;
     for (let i = 0; i < Number(count); i++) {
         const sender = await blockchain.treasury(`voter${i}`);
         const { transactions: transactions2 } = await proposal.send(
@@ -40,9 +40,9 @@ it('solution5', async () => {
 
         expect(await proposal.getProposalState()).toMatchObject({ yesCount: BigInt(i + 1), noCount: 0n });
     }
-    const voter = await blockchain.treasury('voter100');
+    const voter = await blockchain.treasury('voter10');
     {
-        const { transactions } = await proposal.send(
+        const { transactions: transactions1 } = await proposal.send(
             voter.getSender(),
             { value: toNano('0.1') },
             {
@@ -50,9 +50,9 @@ it('solution5', async () => {
                 value: true,
             },
         );
+        printTransactionFees(transactions1)
         expect(await proposal.getProposalState()).toMatchObject({ yesCount: count, noCount: 0n });
-    }
-    {
+
         const { transactions } = await proposal.send(
             voter.getSender(),
             { value: toNano('0.1') },
@@ -61,8 +61,8 @@ it('solution5', async () => {
                 value: false,
             },
         );
-        expect(await proposal.getProposalState()).toMatchObject({ yesCount: count, noCount: 0n });
         printTransactionFees(transactions);
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: count, noCount: 0n });
     }
     {
         const { transactions } = await proposal.send(

@@ -1,12 +1,22 @@
 #include "./imports/stdlib.fc";
 #include "_compiled_code.fc";
+cell ref_at(slice cell_, int index) impure asm "PLDREFVAR";
 slice calculate_child_address(cell state_init) inline {
     return begin_cell().store_uint(1024, 11)
         .store_uint(cell_hash(state_init), 256)
         .end_cell()
         .begin_parse();
 }
-
+;; slice try_get_address(slice data, int index) {
+;;     int status = data~load_uint(1 << 4);
+;;     if (status & (1 << index)) {
+;;         return null();
+;;     }
+;;     return data.ref_at(index).begin_parse();
+;; }
+int user_index(slice owner) inline {
+    return owner~load_uint(1);
+}
 cell child_state_init(slice owner) inline {
     return begin_cell()
         .store_uint(6, 5)
@@ -14,19 +24,27 @@ cell child_state_init(slice owner) inline {
         .store_ref(
             begin_cell()
                 .store_slice(my_address())
-                .store_slice(owner)
+            ;; stores one bit empty for cell
+                .store_uint(
+                    user_index(owner), 5
+                )
                 .end_cell()
         )
         .end_cell();
 }
-() deploy_child(slice sender_address, slice value) impure inline {
+() deploy_child(slice sender_address, builder value) impure inline {
     cell state_init = child_state_init(sender_address);
+    ;; builder addr = begin_cell()
+    ;;     .store_uint(1024, 11)
+    ;;     .store_uint(cell_hash(state_init), 256);
+
     cell message = begin_cell()
-        .store_uint((BOUNCEABLE << 11) + 1024, 6 + 11)
+        .store_uint((BOUNCEABLE), 6)
+        .store_uint(1024, 11)
         .store_uint(cell_hash(state_init), 256)
     ;; .store_slice(calculate_child_address(state_init))
         .store_uint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0)), MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
-        .store_slice(value)
+        .store_builder(value)
         .store_ref(state_init)
         .end_cell();
     send_raw_message(message, SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
@@ -44,9 +62,9 @@ cell child_state_init(slice owner) inline {
         if (istrue) {
             set_data(
                 begin_cell()
-                .store_uint(data~load_uint(64) - 1, 64)
-                .store_slice(data)
-                .end_cell()
+                    .store_uint(data~load_uint(64) - 1, 64)
+                    .store_slice(data)
+                    .end_cell()
             );
             ;; save_data(votingUntil, yescount - 1, nocount);
         }
@@ -68,10 +86,10 @@ cell child_state_init(slice owner) inline {
     if (value) {
         int a = data2~load_uint(64) + 1;
         set_data(
-                begin_cell()
-                    .store_uint(a, 64)
-                    .store_slice(data2)
-                    .end_cell()
+            begin_cell()
+                .store_uint(a, 64)
+                .store_slice(data2)
+                .end_cell()
         );
     }
     else {
@@ -81,7 +99,13 @@ cell child_state_init(slice owner) inline {
                 .end_cell()
         );
     }
-    deploy_child(sender_address, old);
+    (int __, int v) = parse_std_addr(sender_address);
+    deploy_child(
+        sender_address,
+        begin_cell()
+            .store_slice(old)
+            .store_uint(v, 256)
+    );
 }
 
 _ proposalState() method_id {
