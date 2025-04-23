@@ -1,10 +1,9 @@
 import '@ton/test-utils';
 import { Blockchain, printTransactionFees } from '@ton/sandbox';
-import { Cell, Slice, toNano } from '@ton/core';
+import { toNano } from '@ton/core';
 import { Proposal } from '../output/solution3_Proposal';
-import {compileFunc} from '@ton-community/func-js';
-import * as fs from 'fs';
-it('solution3', async () => {
+
+it('solution5', async () => {
     const blockchain = await Blockchain.create();
 
     // create contract from init()
@@ -18,28 +17,30 @@ it('solution3', async () => {
 
     // deploy contract
     const deployer = await blockchain.treasury('deployer');
-    const {transactions} = await proposal.send(
+    const { transactions } = await proposal.send(
         deployer.getSender(),
         {
             value: toNano('0.01'),
         },
         null, // empty message, handled by `receive()` without parameters
     );
-    printTransactionFees(transactions)
+    printTransactionFees(transactions);
+    const count = 2000n;
+    for (let i = 0; i < Number(count); i++) {
+        const sender = await blockchain.treasury(`voter${i}`);
+        const { transactions: transactions2 } = await proposal.send(
+            sender.getSender(),
+            { value: toNano('0.1') },
+            {
+                $$type: 'Vote',
+                value: true,
+            },
+        );
+        printTransactionFees(transactions2);
 
-    // vote
-    const voter = await blockchain.treasury('voter');
-    const {transactions: transactions2} = await proposal.send(
-        voter.getSender(),
-        { value: toNano('0.1') },
-        {
-            $$type: 'Vote',
-            value: true,
-        },
-    );
-
-    // the vote was counted
-    expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: BigInt(i + 1), noCount: 0n });
+    }
+    const voter = await blockchain.treasury('voter100');
     {
         const { transactions } = await proposal.send(
             voter.getSender(),
@@ -49,8 +50,7 @@ it('solution3', async () => {
                 value: true,
             },
         );
-        printTransactionFees(transactions)
-        expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: count, noCount: 0n });
     }
     {
         const { transactions } = await proposal.send(
@@ -61,29 +61,18 @@ it('solution3', async () => {
                 value: false,
             },
         );
-        expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: count, noCount: 0n });
         printTransactionFees(transactions);
     }
     {
         const { transactions } = await proposal.send(
-            (await blockchain.treasury("tete")).getSender(),
+            (await blockchain.treasury('tete')).getSender(),
             { value: toNano('0.1') },
             {
                 $$type: 'Vote',
                 value: false,
             },
         );
-        const data = await blockchain.getContract(proposal.address)
-        if(data.accountState!.type !== "active") throw "not active";
-        console.log("Bits: ", calcBits(data.accountState!.state.data!.asSlice()));
-
-        expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 1n });
+        expect(await proposal.getProposalState()).toMatchObject({ yesCount: count, noCount: 1n });
     }
 });
-function calcBits(cell: Slice): number {
-    let ans = cell.remainingBits;
-    while (cell.remainingRefs){
-        ans += calcBits(cell.loadRef()!.asSlice());
-    }
-    return ans;
-}
