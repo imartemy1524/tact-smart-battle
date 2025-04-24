@@ -57,4 +57,17 @@ it('solution2', async () => {
     console.log(fromNano(transactions[1]!.totalFees.coins))
     // the vote was counted
     expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
+    {
+        const {transactions} = await proposal.send(
+            voter.getSender(),
+            { value: toNano('0.1') },
+            {
+                $$type: 'Vote',
+                value: true,
+            },
+        );
+        expect(transactions).toHaveTransaction({
+            exitCode: i => i != 0,
+        })
+    }
 });

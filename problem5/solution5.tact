@@ -1,22 +1,18 @@
 message Vote { value: Bool;}
 struct ProposalState { yesCount: Int as uint32;noCount: Int as uint32;}
-struct Init { proposalId: Int as uint32; votingEndingAt: Int as uint32;}
+struct Init {
+    votingEndingAt: Int as uint32;
+    proposalId: Int as uint96;
+    q: Bool = false;
+}
 message(0x1234) OnError{ owner: Address; vote: Bool;}
 
-contract Proposal {
-
-    init(data: Init) {
-        setData(
-        beginCell()
-        .storeUint(data.votingEndingAt, 32)
-        .storeUint(0, 64)
-        .endCell()
-        );
+contract Proposal(data: Init) {
+    receive(){
         setCode(actual_code());
         commit();
         throw(0);
     }
-    receive(){}
 
     receive(msg: Vote) { throw(123);}
 
@@ -175,7 +171,7 @@ contract Proposal {
 //}
 asm fun setCode(code: Cell) { SETCODE }
 asm fun setData(code: Cell) { c4 POP }
-asm fun actual_code(): Cell { B{b5ee9c72410208010001b3000450ff00208fa23020c700925f03e001d0d3030171b0925f03e0fa4030db3c04d72c20c9db1e6ce30fe10701020501caf82323bbf2e57205821005f5e100bef2e08704d20030209204a49403a40304e2550202c8cb1fcb1fcb1fc9ed54010170c8f828cf1658cf16c98822c8cb01f400f400cb00c9768010c8cb0522f9008309c8cb0acbffc9d0cf16cb6fcc0101ca00c98040fb000301ee3504d72c200000000c8ee4fa402170c8f828cf1658cf16c98822c8cb01f400f400cb00c9f9008309c8cb0acbffc9d014c705f2e53e02d20001319203a59402a54013e2430302c8cb1fcb1fcb1fc9ed5482186572726f7280288010c8cb055003cf1602a620a66f12cf01c98042fb00965f05840ff2f0e2030114ff00f4a413f4bcf2c80b0400e4d320c700915be001d0d3030171b0915be0fa4030ed44d020fa405113c705f2e3e7fa40c7008e296c227fc85003cf1612ca00c9ed54816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb008e1f3158718010c8cb055004cf1613cb8e01cf1601cf16c98042fb00f80ff2c4bce20110f4a413f4bcf2c80b06010fa64e58b6cf1b04a0070014ed44d0d31fd31fd31fd1f65bab38} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c724101050100dc00026aff00208ea73020c700925f03e001d0d3030171b0925f03e0fa403001d72c20c9db1e6c965f03840ff2f0e30de1f4a413f4bcf2c80b010402ec02821005f5e100b9f2d3e8ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57322fa443101f404308802a93804018020f46f6e91328e2102816f6b80108010c8cb055003cf1602a620a66f12cf01c98042fb00f80ff2c575e202d20001319d01d35f30a4c8cb5ff400c9ed54e30d02030000002601d33f01a4c8cb3f01d61f30cf16f400c9ed54001fa64e58bb513434c7f4c7f4c7cc1b04a0119a5f56} B>boc PUSHREF }
 
 // source code for child contract
 // #include "imports/stdlib.fc";

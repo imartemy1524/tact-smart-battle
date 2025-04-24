@@ -36,7 +36,7 @@ it('3', async () => {
                 value: true,
             },
         );
-        printTransactionFees(transactions2);
+        // printTransactionFees(transactions2);
 
         expect(await proposal.getProposalState()).toMatchObject({ yesCount: BigInt(i + 1), noCount: 0n });
     }

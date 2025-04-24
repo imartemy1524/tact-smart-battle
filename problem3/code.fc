@@ -32,25 +32,28 @@ cell child_state_init(slice owner) inline {
         )
         .end_cell();
 }
-() deploy_child(slice sender_address, builder value) impure inline {
-    cell state_init = child_state_init(sender_address);
+() deploy_child(slice data, slice old, int index) impure inline {
     ;; builder addr = begin_cell()
     ;;     .store_uint(1024, 11)
     ;;     .store_uint(cell_hash(state_init), 256);
 
     cell message = begin_cell()
-        .store_uint((BOUNCEABLE), 6)
-        .store_uint(1024, 11)
-        .store_uint(cell_hash(state_init), 256)
-    ;; .store_slice(calculate_child_address(state_init))
-        .store_uint(((MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0)), MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
-        .store_builder(value)
-        .store_ref(state_init)
+        .store_slice(data)
+        .store_slice(old)
+        .store_uint(index, 256)
         .end_cell();
     send_raw_message(message, SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 
 }
-
+(slice, ()) test_if_default(slice data) impure inline {
+    if(slice_bits(data) == 64){
+        return begin_cell()
+            .store_uint((data~load_bits(64) % 32) << 64, 64 + 32)
+            .end_cell()
+            .begin_parse();
+    }
+    return data;
+}
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_msg_flags();
@@ -60,29 +63,34 @@ cell child_state_init(slice owner) inline {
         int istrue = in_msg_body~load_bool();
         slice data = get_data().begin_parse();
         if (istrue) {
+            int a = data~load_uint(64) - 1;
             set_data(
                 begin_cell()
-                    .store_uint(data~load_uint(64) - 1, 64)
+                    .store_uint(a, 64)
                     .store_slice(data)
                     .end_cell()
             );
-            ;; save_data(votingUntil, yescount - 1, nocount);
         }
         else {
+            int a = data~load_uint(64 + 32) - 1;
             set_data(
                 begin_cell()
-                    .store_uint(data~load_uint(64 + 32) - 1, 64 + 32)
+                    .store_uint(a, 64 + 32)
+                    .store_slice(data)
                     .end_cell()
             );
-            ;; save_data(votingUntil, yescount, nocount - 1);
         }
         return ();
     }
     slice data = get_data().begin_parse();
+    data~test_if_default();
     slice data2 = data;
     throw_unless(1394, now() <= data~load_uint(32));
     slice old = in_msg_body;
     int value = in_msg_body~load_uint(1);
+    if (data2.slice_refs()) {
+        data2~load_ref();
+    }
     if (value) {
         int a = data2~load_uint(64) + 1;
         set_data(
@@ -93,18 +101,29 @@ cell child_state_init(slice owner) inline {
         );
     }
     else {
+        int a = data2~load_uint(64 + 32) + 1;
         set_data(
             begin_cell()
-                .store_uint(data2~load_uint(64 + 32) + 1, 64 + 32)
+                .store_uint(a, 64 + 32)
+                .store_slice(data2)
                 .end_cell()
         );
     }
     (int __, int v) = parse_std_addr(sender_address);
+    slice dataToSend = null();
+    if (data.slice_refs()) {
+        cell rrrr = data~load_ref();
+        dataToSend = rrrr.begin_parse();
+    }
+    else {
+
+        data~skip_bits( 64);
+        dataToSend = data;
+    }
     deploy_child(
-        sender_address,
-        begin_cell()
-            .store_slice(old)
-            .store_uint(v, 256)
+        dataToSend,
+        old,
+        v
     );
 }
 

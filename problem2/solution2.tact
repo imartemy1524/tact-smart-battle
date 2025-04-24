@@ -1,6 +1,6 @@
 struct ProposalInit {
     master: Address;
-    proposalId: Int as uint32;
+    proposalId: Int as uint6;
 }
 
 message DeployNewProposal {
@@ -32,15 +32,23 @@ inline fun contractAddressPacked(packed: Cell): Builder{
     return beginCell()
 
 }
-contract ProposalMaster {
-    id: Int as uint32 = 0;
+contract ProposalMaster() {
+
     // deploy
-    receive() { }
+    receive() {
+
+    }
 
     receive(msg: DeployNewProposal) {
+        let data = getData().asSlice();
         require(msg.votingEndingAt >= now(), "Proposal expired");
-        let state = initOf Proposal(ProposalInit{master: myAddress(), proposalId: self.id});
-        self.id += 1;
+        let id = bool(data.bits()) ? data.loadUint(10) : 0;
+        let state = initOf Proposal(ProposalInit{master: myAddress(), proposalId: id});
+
+        id += 1;
+        setData(
+            beginCell().storeUint(id, 10).endCell()
+        );
         let state_init_packed = packStateInit(state);
         sendRawMessag(
         //           dark magic here
@@ -52,10 +60,13 @@ contract ProposalMaster {
             .endCell(),
             SendRemainingValue
         );
+        commit();
+        throw(0);
 
     }
     get fun nextProposalId(): Int {
-        return self.id;
+        let d = getData().asSlice();
+        return bool(d.bits()) ? d.loadUint(10) : 0;
     }
 }
 
@@ -73,22 +84,15 @@ struct ProposalState {
     votingEndingAt: Int as uint32;
 }
 
-contract Proposal {
-    master: Address;
-    proposalId: Int as uint32;
-    init(data: ProposalInit){
-        self.master = data.master;
-        self.proposalId = data.proposalId;
-    }
+contract Proposal(data: ProposalInit) {
 
     receive(m: Slice){
-        nativeThrowUnless(2025, sender() == self.master);
+        nativeThrowUnless(2025, sender() == self.data.master);
         setData(
             beginCell()
             .storeSlice(m)
-            .storeUint(0, 65)  // store uint32 + uint32 + dict(none)
-            .storeAddress(self.master)
-            .storeUint(self.proposalId, 32)
+            .storeUint(self.data.proposalId, 65 + 32)  // store uint32 + uint32 + dict(none)
+            .storeAddress(self.data.master)
             .endCell()
         );
         setCode(actual_code());
@@ -114,103 +118,9 @@ contract Proposal {
 asm fun sendRawMessag(msg: Cell, flags: Int) {SENDRAWMSG}
 asm fun setCode(code: Cell) {SETCODE}
 asm fun setData(code: Cell) { c4 POP }
+asm fun getData(): Cell { c4 PUSH }
 asm extends fun storeDict(self: Builder, dict: Cell): Builder {
     SWAP STDICT
 }
-// #include "./imports/stdlib.fc";
-//(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
-//int sum2hack(int a, int b) asm "DIVMOD ADD";
-//int inc(int a) asm "INC";
-//
-//(int, int, int, slice, int) load_data() inline {
-//    cell data = get_data();
-//    var cs = data.begin_parse();
-//
-//    int votingEndingAt = cs~load_uint(32);
-//    int yesCount = cs~load_uint(32);
-//    int noCount = cs~load_uint(32);
-//    cs~skip_bits(1); ;; skip dict
-//    slice master = cs~load_msg_addr();
-//    int proposalId = cs~load_uint(32);
-//    return (votingEndingAt, yesCount, noCount, master, proposalId);
-//}
-//() recv_internal(cell in_msg_full, slice in_msg_body) impure {
-//    if (in_msg_body.slice_empty?()) {
-//        ;; ignore all empty messages
-//        return ();
-//    }
-//    in_msg_body~skip_op();
-//    slice cs = in_msg_full.begin_parse();
-//    int flags = cs~load_msg_flags();
-//    slice sender_address = cs~load_msg_addr();
-//    slice data = get_data().begin_parse();
-//    slice data0 = data;
-//    ;; (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
-//
-//    throw_unless(1394, now() <= data~load_uint(32));
-//    throw_unless(1395, sum2hack(data~load_uint(64), 1 << 32) < 100);
-//    (int chain, int address) = parse_std_addr(sender_address);
-//    cell dict = data~load_dict();
-//    cell prev = dict~udict_set_get_ref(256, address, empty_cell());
-//    throw_unless(1397, cell_null?(prev));
-//
-//    int value = in_msg_body~load_int(1);
-//    if (value) {
-//        int a = inc(
-//            data0~load_uint(64)
-//        );
-//        set_data(
-//            begin_cell()
-//            .store_uint(a, 64)
-//            .store_slice(data0~load_bits(32))
-//            .store_dict(dict)
-//            .store_slice(data)
-//            .end_cell()
-//        );
-//    } else {
-//        int a = inc(
-//            data0~load_uint(64 + 32)
-//        );
-//
-//        set_data(
-//            begin_cell()
-//                .store_uint(a, 64 + 32)
-//                .store_dict(dict)
-//                .store_slice(data)
-//                .end_cell()
-//        );
-//    }
-//
-//
-//}
-//
-//_ proposalState() method_id {
-//    (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId) = load_data();
-//    return (yes_count, no_count, master, proposalId, votingEndsAt);
-//}
-//() __tact_selector_hack_asm() impure asm """
-//@atend @ 1 {
-//    execute current@ context@ current!
-//    {
-//        }END> b>
-//
-//        <{
-//            SETCP0 DUP
-//            IFNOTJMP:<{
-//                DROP over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
-//            }>
-//swap <s ref@
-//            0 swap @procdictkeylen idict- drop
-//            -1 swap @procdictkeylen idict- drop
-//            65535 swap @procdictkeylen idict- drop
-//
-//            @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
-//        }> b>
-//    } : }END>c
-//    current@ context! current!
-//} does @atend !
-//""";
-//() __tact_selector_hack() method_id (65535) {
-//    return __tact_selector_hack_asm();
-//}
-asm fun actual_code(): Cell { B{b5ee9c724101040100a20003faff00208ef23020c700915be08020d72101d0d3030130fa4030ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e57302fa443102f4048850428307f46f6ef2e57503d200308e16d33f01a4c8cb3f01d61f30cf1612f40001cf16c9ed548e10d35f30a4c8cb5f12f40001cf16c9ed54e2e1f4a413f4bc0102030000002da64e58bb513434c7f4c7f4c7dc75c87e9034c7cc1540e00006f2c80b7fd7354a} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c7241010201009a0001faff00208e6f3020c700915be08020d72101d0d3030130fa4030ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e573f4048b16185042810109f41af2d4dd03d200308e16d33f01a4c8cb3f01d61f30cf1612f40001cf16c9ed548e10d35f30a4c8cb5f12f40001cf16c9ed54e2e1f4a413f4bcf2c80b01002fa64e58bb513434c7f4c7f4c7dc75c874c7fe900c005540e07805c1ca} B>boc PUSHREF }
+asm fun bool(c: Int): Bool {  }

@@ -1,5 +1,7 @@
 ;; Standard library for funC
 ;;
+(cell, ()) udict_set_get(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSETGET 1245 THROWIF";
+(cell, ()) dict_set_get(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSETGET 1245 THROWIF";
 
 {-
     This file is part of TON FunC Standard Library.

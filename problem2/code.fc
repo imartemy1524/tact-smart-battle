@@ -12,8 +12,8 @@ int inc(int a) asm "INC";
     int yesCount = cs~load_uint(32);
     int noCount = cs~load_uint(32);
     cs~skip_bits(1); ;; skip dict
-    slice master = cs~load_msg_addr();
     int proposalId = cs~load_uint(32);
+    slice master = cs~load_msg_addr();
     return (votingEndingAt, yesCount, noCount, master, proposalId);
 }
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
@@ -31,10 +31,10 @@ int inc(int a) asm "INC";
 
     throw_unless(1394, now() <= data~load_uint(32));
     throw_unless(1395, sum2hack(data~load_uint(64), 1 << 32) < 100);
-    (int chain, int address) = parse_std_addr(sender_address);
+    ;; (int chain, int address) = parse_std_addr(sender_address);
     cell dict = data~load_dict();
-    cell prev = dict~udict_set_get_ref(256, address, empty_cell());
-    throw_unless(1397, cell_null?(prev));
+    dict~dict_set_get(256 + 8 + 1, sender_address, "a");
+    ;; throw_unless(1397, cell_null?(prev));
 
     int value = in_msg_body~load_int(1);
     if (value) {
