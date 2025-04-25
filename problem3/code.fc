@@ -3,16 +3,16 @@
 (slice, int) slice_stats_with_0(slice input) asm "x{00000000001_} SDBEGINSQ";
 int starts_with(slice a, slice b) asm "SDPFX";
 int inc(int v) asm "INC";
-const int size = 7;
+const int size = 43; ;; btw it can be 44, 45 and more
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    if(in_msg_body.slice_empty?()){
+    if (in_msg_body.slice_empty?()) {
         return ();
     }
     slice dataparser = get_data().begin_parse();
     slice data2 = dataparser;
     throw_unless(2, now() <= (dataparser~load_uint(32 + 64) >> 64));
-    slice c = in_msg_full.begin_parse().preload_bits(size + 32 + 4);
+    slice c = in_msg_full.begin_parse().preload_bits(size);
     throw_if(1, c.equal_slices_bits(dataparser));
     int bool = in_msg_body~check_if_op_and_1();
     ifnot (bool) {
