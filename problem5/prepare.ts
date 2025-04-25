@@ -39,10 +39,6 @@ async function compileParent(){
             {
                 filename: "imports/stdlib.fc",
                 content: await fs.promises.readFile(__dirname +"/imports/stdlib.fc", "utf-8"),
-            },
-            {
-                filename: "_compiled_code.fc",
-                content: await fs.promises.readFile(__dirname +"/_compiled_code.fc", "utf-8"),
             }
         ]
     })
@@ -57,7 +53,7 @@ async function replaceConstantInTactFile(codeToReplace: Cell) {
     const code = codeToReplace.toBoc().toString("hex");
     try {
         // Read the file asynchronously
-        const filePath = 'solution5.tact';
+        const filePath = __dirname + '/solution5.tact';
         let content = await fs.promises.readFile(filePath, 'utf-8');
 
         // Replace the blablabla with constant f
@@ -77,8 +73,8 @@ async function replaceConstantInTactFile(codeToReplace: Cell) {
 
 
 async function main(){
-    const code = await compileChild();
-    await writeCodeToFile(code);
+    // const code = await compileChild();
+    // await writeCodeToFile(code);
     const parentCode = await compileParent();
     replaceConstantInTactFile(parentCode);
 // in file solution3.tact replace asm fun actual_code(): Cell { B{blablabla} B>boc PUSHREF } with code

@@ -2,7 +2,7 @@
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 int sum2hack(int a, int b) asm "DIVMOD ADD";
 int inc(int a) asm "INC";
-(slice, int) check_if_1(slice input) asm "<b 0 1 u, b> <s SDBEGINSQ";
+(slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
 
 (int, int, int, slice, int) load_data() inline {
     cell data = get_data();
@@ -17,14 +17,9 @@ int inc(int a) asm "INC";
     return (votingEndingAt, yesCount, noCount, master, proposalId);
 }
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) {
-        ;; ignore all empty messages
-        return ();
-    }
-    in_msg_body~skip_op();
     slice cs = in_msg_full.begin_parse();
-    cs~load_msg_flags();
-    slice sender_address = cs~load_msg_addr();
+    ;; cs~load_msg_flags();
+    ;; slice sender_address = cs~load_msg_addr();
     slice data = get_data().begin_parse();
     slice data0 = data;
     ;; (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId, cell dict) = load_data(1);
@@ -33,10 +28,10 @@ int inc(int a) asm "INC";
     throw_unless(1395, sum2hack(data~load_uint(64), 1 << 32) < 100);
     ;; (int chain, int address) = parse_std_addr(sender_address);
     cell dict = data~load_dict();
-    dict~dict_set_get(256 + 8 + 1, sender_address, "a");
+    dict~dict_set_get(125, cs.preload_bits(125), "");
     ;; throw_unless(1397, cell_null?(prev));
-
-    int value = in_msg_body~load_int(1);
+    in_msg_body~skip_op();
+    int value = in_msg_body.preload_uint(1);
     if (value) {
         int a = inc(
             data0~load_uint(64)
@@ -44,7 +39,7 @@ int inc(int a) asm "INC";
         set_data(
             begin_cell()
             .store_uint(a, 64)
-            .store_slice(data0~load_bits(32))
+            .store_slice(data0.preload_bits(32))
             .store_dict(dict)
             .store_slice(data)
             .end_cell()
@@ -67,7 +62,7 @@ int inc(int a) asm "INC";
 
 }
 
-_ proposalState() method_id {
+_ proposalState() method_id(-14) {
     (int votingEndsAt, int yes_count, int no_count, slice master, int proposalId) = load_data();
     return (yes_count, no_count, master, proposalId, votingEndsAt);
 }
@@ -78,15 +73,13 @@ _ proposalState() method_id {
         }END> b>
 
         <{
-            SETCP0 DUP
             IFNOTJMP:<{
-                DROP over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
+                over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
+            -14 PUSHINT
 swap <s ref@
             0 swap @procdictkeylen idict- drop
-            -1 swap @procdictkeylen idict- drop
             65535 swap @procdictkeylen idict- drop
-
             @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
         }> b>
     } : }END>c

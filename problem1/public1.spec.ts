@@ -27,7 +27,7 @@ it('solution1', async () => {
 
     for (let i = 0; i < 50; i++) {
         // vote
-        const voter = await blockchain.treasury('voter' + i);
+        const voter = await blockchain.treasury('v' + i);
         const { transactions } = await proposal.send(
             voter.getSender(),
             { value: toNano('0.1') },
@@ -58,7 +58,7 @@ it('solution1', async () => {
     const state = await proposal.getProposalState();
     // the vote was counted
     expect(state).toMatchObject({ yesCount: 50n, noCount: 49n });
-    const voter = await blockchain.treasury('voter' + 2);
+    const voter = await blockchain.treasury('v' + 2);
     const { transactions } = await proposal.send(
         voter.getSender(),
         { value: toNano('0.1') },

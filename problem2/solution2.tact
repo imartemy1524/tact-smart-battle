@@ -3,7 +3,7 @@ struct ProposalInit {
     proposalId: Int as uint6;
 }
 
-message DeployNewProposal {
+message(2) DeployNewProposal {
     votingEndingAt: Int as uint32;
 }
 inline fun packStateInit(init: StateInit): Cell{
@@ -12,15 +12,6 @@ inline fun packStateInit(init: StateInit): Cell{
     .storeRef(init.code)
     .storeRef(init.data)
     .endCell();
-
-}
-inline fun replyOk(to: Address) {
-    let msg2sender = beginCell()
-    .storeUint(0x10, 6)
-    .storeAddress(to)
-    .storeUint(0x6f6b, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1 + (32 + 16)) // 32 bits empty (comment padding) and length (16 bit)
-    .endCell();
-    sendRawMessag(msg2sender, SendRemainingValue);
 }
 const MSG_INFO_REST_BITS: Int = 1 + 4 + 4 + 64 + 32;
 const MSG_WITH_STATE_INIT_AND_BODY_SIZE: Int = MSG_INFO_REST_BITS + 1 + 1 + 1;
@@ -28,16 +19,10 @@ const MSG_HAVE_STATE_INIT: Int = 4;
 const MSG_STATE_INIT_IN_REF: Int = 2;
 const MSG_BODY_IN_REF: Int = 1;
 
-inline fun contractAddressPacked(packed: Cell): Builder{
-    return beginCell()
-
-}
 contract ProposalMaster() {
 
     // deploy
-    receive() {
-
-    }
+    receive() { }
 
     receive(msg: DeployNewProposal) {
         let data = getData().asSlice();
@@ -70,9 +55,7 @@ contract ProposalMaster() {
     }
 }
 
-// ==============================================================================
-
-message Vote {
+message(1) Vote {
     value: Bool;
 }
 
@@ -103,7 +86,7 @@ contract Proposal(data: ProposalInit) {
         // TODO: be in code
     }
 
-    get fun proposalState(): ProposalState {
+    get(-14) fun proposalState(): ProposalState {
         let address: Address? = null;
         return ProposalState{
             yesCount: 0,
@@ -122,5 +105,5 @@ asm fun getData(): Cell { c4 PUSH }
 asm extends fun storeDict(self: Builder, dict: Cell): Builder {
     SWAP STDICT
 }
-asm fun actual_code(): Cell { B{b5ee9c7241010201009a0001faff00208e6f3020c700915be08020d72101d0d3030130fa4030ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e573f4048b16185042810109f41af2d4dd03d200308e16d33f01a4c8cb3f01d61f30cf1612f40001cf16c9ed548e10d35f30a4c8cb5f12f40001cf16c9ed54e2e1f4a413f4bcf2c80b01002fa64e58bb513434c7f4c7f4c7dc75c874c7fe900c005540e07805c1ca} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c7241010201008d0001e08e6301d0ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e573f4048b0804d71d7c4404807df41af2d4dd038020d721d70b008e16d33f01a4c8cb3f01d71d1fcf1612f40001cf16c9ed548e10d35f30a4c8cb5f12f40001cf16c9ed54e2e180f2f4a413f4bcf2c80b01002fa7fffcbb513434c7f4c7f4c7dc75c874c7fe900c005540e0980f442f} B>boc PUSHREF }
 asm fun bool(c: Int): Bool {  }

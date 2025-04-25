@@ -1,6 +1,5 @@
 #include "./imports/stdlib.fc";
-(slice, int) check_if_op_and_1(slice input) asm "x{193B63CDC_} SDBEGINSQ";
-int is_first_one(slice s) asm "SDFIRST";
+(slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
 int inc(int v) asm "INC";
 const int size = 7;
 ;;; adds 2 uin64 (containing 2 uint32)
@@ -40,7 +39,7 @@ const int size = 7;
 
 }
 
-_ proposalState() method_id {
+_ proposalState() method_id(-15) {
     slice s = get_data().begin_parse();
     s~skip_bits(32);
     return (
@@ -57,7 +56,7 @@ _ proposalState() method_id {
         }END> b>
 
         <{
-            SETCP0 DUP
+            DUP
             IFNOTJMP:<{
                 DROP over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
