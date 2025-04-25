@@ -2,7 +2,6 @@ const const::min_amount = 100000000; ;; 0.1 ton
 #include "./imports/stdlib.fc";
 (slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
 int inc(int v) asm "INC";
-const int size = 7;
 builder store_non_bounced(builder b) impure asm "x{42_} STSLICECONST";
 builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_} STSLICECONST";
 () reply_msg(slice to) impure inline {
@@ -14,6 +13,7 @@ builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_}
         .end_cell();
     send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 }
+slice subslice(slice a, int from, int to) asm "SDSUBSTR";
 
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal(int amount, cell in_msg_full, slice in_msg_body) impure {
@@ -24,11 +24,10 @@ builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_}
         cell data = get_data();
         slice cs = data.begin_parse();
         slice cs0 = cs;
-        throw_unless(2, now() <= (cs~load_uint(32 + 64) >> 64));
+        throw_unless(2,  (cs~load_uint(32 + 64) >> 64) >= now());
 
         slice csp = in_msg_full.begin_parse();
-        csp~skip_bits(4);
-        slice sender = csp~load_msg_addr();
+        slice sender = subslice(csp, 4, 267);
         reply_msg(sender);
 
         throw_unless(1, slice_empty?(cs) | ~ equal_slices_bits(cs, sender));
