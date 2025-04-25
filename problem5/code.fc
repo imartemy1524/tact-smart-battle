@@ -17,41 +17,48 @@ builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_}
 
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal(int amount, cell in_msg_full, slice in_msg_body) impure {
-    throw_if(1234, amount < const::min_amount);
-    ;; if (in_msg_body~check_if_opcode$193b63cd()) {
-    cell data = get_data();
-    slice cs = data.begin_parse();
-    slice cs0 = cs;
-    throw_unless(1394, now() <= (cs~load_uint(32 + 64) >> 64));
+    if(amount >= const::min_amount) {
+        ;; if (in_msg_body~check_if_opcode$193b63cd()) {
+        cell data = get_data();
+        slice cs = data.begin_parse();
+        slice cs0 = cs;
+        throw_unless(2, now() <= (cs~load_uint(32 + 64) >> 64));
 
-    int current_storage = cs.preload_uint(1 << size);
-    slice csp = in_msg_full.begin_parse();
-    int c = csp.preload_uint(size + 32 + 4) % (1 << size);
-    csp~skip_bits(4);
-    reply_msg(csp~load_msg_addr());
-    int which = (1 << c);
-    throw_if(0xffff, current_storage & which);
-    current_storage |= which;
-    ifnot (in_msg_body~check_if_op_and_1()) {
-        ;; use SDFIRST instead
-        int b = inc(cs0~load_uint(64));
-        set_data(
-            begin_cell()
-                .store_uint(b, 64)
-                .store_slice(cs0.preload_bits(32))
-                .store_uint(current_storage, 1 << size)
-                .end_cell()
-        );
+        ;; cs~load_uint(1 << size);
 
-    }
-    else {
-        var a = cs0.preload_uint(64 + 32);
-        set_data(
-            begin_cell()
-                .store_uint(inc(a), 64 + 32)
-                .store_uint(current_storage, 1 << size)
-                .end_cell()
-        );
+        slice csp = in_msg_full.begin_parse();
+        ;; int sender_index = csp.preload_uint(size + 32 + 4) % (1 << size);
+        csp~skip_bits(4);
+        slice sender = csp~load_msg_addr();
+        reply_msg(sender);
+
+        ;; int which = (1 << sender_index);
+        throw_unless(1345, slice_empty?(cs) | ~ equal_slices_bits(cs, sender));
+        ;; throw_if(1, current_storage & which);
+        ;; current_storage |= which;
+        ifnot (in_msg_body~check_if_op_and_1()) {
+            ;; use SDFIRST instead
+            int b = inc(cs0~load_uint(64));
+            set_data(
+                begin_cell()
+                    .store_uint(b, 64)
+                    .store_slice(cs0.preload_bits(32))
+                    ;; .store_uint(0, 1 << size)
+                    .store_slice(sender)
+                    .end_cell()
+            );
+
+        }
+        else {
+            var a = cs0.preload_uint(64 + 32);
+            set_data(
+                begin_cell()
+                    .store_uint(inc(a), 64 + 32)
+                    ;; .store_uint(0, 1 << size)
+                    .store_slice(sender)
+                    .end_cell()
+            );
+        }
     }
 
 }
@@ -61,7 +68,7 @@ _ proposalState() method_id (-14) {
     s~skip_bits(32);
     return (
         s~load_uint(32),
-        s~load_uint(32)
+        s.preload_uint(32)
     );
 }
 () __tact_selector_hack_asm() impure asm """
@@ -74,13 +81,8 @@ _ proposalState() method_id (-14) {
             IFNOTJMP:<{
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
-            -14 PUSHINT
 swap <s ref@
-            0 swap @procdictkeylen idict- drop
-            -1 swap @procdictkeylen idict- drop
-            65535 swap @procdictkeylen idict- drop
-
-            @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
+            -14 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
         }> b>
     } : }END>c
     current@ context! current!
