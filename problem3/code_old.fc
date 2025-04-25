@@ -1,7 +1,7 @@
 #include "./imports/stdlib.fc";
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 (cell, ()) dict_set_get(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSETGET 1245 THROWIF";
-int is_first_one(slice s) asm "SDFIRST";
+
 int inc(int v) asm "INC";
 const int size = 8;
 ;;; adds 2 uin64 (containing 2 uint32)
@@ -12,21 +12,17 @@ const int size = 8;
         slice cs0 = cs;
         throw_unless(1394, now() <= cs~load_uint(32));
         cs~skip_bits(64);
-        ;; slice index = SUBSLICE(csp, 32 + 4, 0, size, 0);
-        int current_storage = slice_bits(cs) ? cs.preload_uint(256) : 0;
+        cell dict = cs~load_dict();
         slice csp = in_msg_full.begin_parse();
-        csp~skip_bits(32 + 4);
-        int which = (1 << csp.preload_uint(size));
-        throw_if(0xffff, current_storage & which);
-        current_storage |= which;
-        ifnot (in_msg_body.is_first_one()) {
-            ;; use SDFIRST instead
+        slice index = SUBSLICE(csp, 32 + 4, 0, size, 0);
+        dict~dict_set_get(size, index, "a");
+        ifnot (in_msg_body~load_bool()) {
             int b = inc(cs0~load_uint(64));
             set_data(
                 begin_cell()
                     .store_uint(b, 64)
                     .store_slice(cs0~load_bits(32))
-                    .store_uint(current_storage, 256)
+                    .store_dict(dict)
                     .end_cell()
             );
 
@@ -36,7 +32,7 @@ const int size = 8;
             set_data(
                 begin_cell()
                     .store_uint(inc(a), 64 + 32)
-                    .store_uint(current_storage, 256)
+                    .store_dict(dict)
                     .end_cell()
             );
         }
