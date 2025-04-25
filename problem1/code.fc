@@ -1,34 +1,33 @@
 #include "./imports/stdlib.fc";
 (slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
-slice SUBSLICE(slice a, int l, int refs, int size, int refsb) asm "SUBSLICE";
 builder store_non_bounced(builder b) impure asm "x{42_} STSLICECONST";
-builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_} STSLICECONST";
 () reply_msg(slice to) impure inline {
     cell msg2sender = begin_cell()
-        .store_uint(0x10, 6)
+        .store_uint((0x10 << 11) + 1024 , 6 + 11)
+        ;; .store_non_bounced()
         .store_slice(to)
-        .store_none_flags() ;; slore flags
+        .store_uint(0, 4 + 1 + 4 + 4 + 64 + 32 + 1 + 1) ;; 32 bits empty (comment padding) and length - length of comment
         .end_cell();
     send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 }
-const int size = 14;
-
 int inc(int v) asm "INC";
 ;;; adds 2 uin64 (containing 2 uint32)
 int sum2hack(int a, int b) asm "DIVMOD ADD";
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    slice csparser = in_msg_full.begin_parse();
-    ;; slice sender_address = cs~load_msg_addr();
+    slice cs = in_msg_full.begin_parse();
+    cs~skip_bits(4 + 11);
+    slice sender_address = cs.preload_bits(256);
+
+    reply_msg(sender_address);
     cell data = get_data();
     slice cs = data.begin_parse();
     slice cs0 = cs;
     ;; (int votingEndsAt, int yes_count, int no_count, cell dict) = load_data(1);
-    throw_unless(1, now() <= cs~load_uint(32));
-    throw_unless(2, sum2hack(cs~load_uint(64), 1 << 32) < 100);
+    throw_unless(2, now() <= cs~load_uint(32));
+    throw_unless(1, sum2hack(cs~load_uint(64), 1 << 32) < 100);
 
     cell dict = cs.preload_dict();
-    slice addr = SUBSLICE(csparser, 45, 0, size, 0);
-    dict~dict_set_get(size, addr, "");
+    dict~dict_set_get(256, sender_address, "a");
     ifnot (in_msg_body~check_if_op_and_1()) {
         int b = inc(cs0~load_uint(64));
         set_data(
@@ -36,7 +35,7 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
                 .store_uint(b, 64)
                 .store_slice(cs0.preload_bits(32))
                 .store_dict(dict)
-            .end_cell()
+                .end_cell()
         );
 
     }
@@ -44,24 +43,21 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
         var a = cs0.preload_uint(64 + 32);
         set_data(
             begin_cell()
-            .store_uint(inc(a), 64 + 32)
-            .store_dict(dict)
-            .end_cell()
+                .store_uint(inc(a), 64 + 32)
+                .store_dict(dict)
+                .end_cell()
         );
     }
-
-    csparser~skip_bits(4);
-    reply_msg(csparser.preload_bits(267));
 
 
 }
 
-_ proposalState() method_id(-14) {
+_ proposalState() method_id (-14) {
     slice s = get_data().begin_parse();
     s~skip_bits(32);
     return (
         s~load_uint(32),
-        s~load_uint(32)
+        s.preload_uint(32)
     );
 }
 () __tact_selector_hack_asm() impure asm """
@@ -69,18 +65,13 @@ _ proposalState() method_id(-14) {
     execute current@ context@ current!
     {
         }END> b>
-
         <{
             IFNOTJMP:<{
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
-            -14 PUSHINT
-            swap <s ref@
-            0 swap @procdictkeylen idict- drop
-            -1 swap @procdictkeylen idict- drop
-            65535 swap @procdictkeylen idict- drop
+swap <s ref@
+            -14 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
 
-            @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
         }> b>
     } : }END>c
     current@ context! current!
