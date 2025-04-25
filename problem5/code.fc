@@ -1,29 +1,10 @@
-#include "./imports/stdlib.fc";
-#include "_compiled_code.fc";
-(slice, int) check_if_opcode$1(slice input) asm "x{00000001} SDBEGINSQ";
-(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 const const::min_amount = 100000000; ;; 0.1 ton
+#include "./imports/stdlib.fc";
+(slice, int) check_if_op_and_1(slice input) asm "x{193B63CDC_} SDBEGINSQ";
+(cell, ()) dict_set_get(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSETGET 1245 THROWIF";
+int is_first_one(slice s) asm "SDFIRST";
 int inc(int v) asm "INC";
-int sum2hack(int a, int b) asm "DIVMOD ADD";
-
-(int, int, int) load_data() inline {
-    cell data = get_data();
-    var cs = data.begin_parse();
-    int votingEndingAt = cs~load_uint(32);
-    int yesCount = cs~load_uint(32);
-    int noCount = cs~load_uint(32);
-    ;; cs.end_parse();
-    return (votingEndingAt, yesCount, noCount);
-}
-() save_data(int votingUntil, int yescount, int nocount) impure inline {
-    set_data(
-        begin_cell()
-            .store_uint(votingUntil, 32)
-            .store_uint(yescount, 32)
-            .store_uint(nocount, 32)
-            .end_cell()
-    );
-}
+const int size = 7;
 () reply_msg(slice to, int message, int length) impure inline {
     cell msg2sender = begin_cell()
         .store_uint(0x10, 6)
@@ -33,112 +14,55 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
     send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 }
 
-cell child_state_init(slice owner) inline {
-    return begin_cell()
-        .store_uint(0, 2)
-        .store_dict(get_child_code())
-        .store_dict(
+;;; adds 2 uin64 (containing 2 uint32)
+() recv_internal(int amount, cell in_msg_full, slice in_msg_body) impure {
+    throw_if(1234, amount < const::min_amount);
+    ;; if (in_msg_body~check_if_opcode$193b63cd()) {
+    cell data = get_data();
+    slice cs = data.begin_parse();
+    slice cs0 = cs;
+    throw_unless(1394, now() <= (cs~load_uint(32 + 64) >> 64));
+
+    int current_storage = slice_bits(cs) ? cs.preload_uint(1 << size) : 0;
+    slice csp = in_msg_full.begin_parse();
+    ;; csp~skip_bits();
+    int c = csp.preload_uint(size + 32 + 4) % (1 << size);
+    int which = (1 << c);
+    throw_if(0xffff, current_storage & which);
+    in_msg_body~load_msg_flags();
+    reply_msg(in_msg_full~load_msg_addr(), 0, 0);
+    current_storage |= which;
+    ifnot (in_msg_body~check_if_op_and_1()) {
+        ;; use SDFIRST instead
+        int b = inc(cs0~load_uint(64));
+        set_data(
             begin_cell()
-                .store_slice(my_address())
-                .store_slice(owner)
+                .store_uint(b, 64)
+                .store_slice(cs0~load_bits(32))
+                .store_uint(current_storage, 1 << size)
                 .end_cell()
-        )
-        .store_uint(0, 1)
-        .end_cell();
-}
-slice calculate_child_address(cell state_init) inline {
-    return begin_cell().store_uint(1024, 11)
-        .store_uint(cell_hash(state_init), 256)
-        .end_cell()
-        .begin_parse();
-}
+        );
 
-() deploy_child(slice sender_address, int value) impure inline {
-    cell state_init = child_state_init(sender_address);
-    cell message = begin_cell()
-        .store_uint(0x10, 6)
-        .store_slice(calculate_child_address(state_init))
-        .store_uint(MSG_HAVE_STATE_INIT + MSG_STATE_INIT_IN_REF + 0, MSG_WITH_STATE_INIT_AND_BODY_SIZE + 4)
-        .store_ref(state_init)
-        .store_bool(value)
-        .end_cell();
-    send_raw_message(message, SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
-
-}
-
-() recv_internal(int ton_amount, cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) {
-        ;; ignore all empty messages
-        return ();
     }
-    slice cs = in_msg_full.begin_parse();
-    int flags = cs~load_msg_flags();
-    if (flags & 1) {
-        ;; ignore all bounced messages
-        return ();
-    }
-    slice sender_address = cs~load_msg_addr();
-    ;; (int votingUntil, int yescount, int nocount) = load_data();
-
-    if (in_msg_body~check_if_opcode$193b63cd()) {
-        throw_if(1000, ton_amount < const::min_amount);
-        cell data = get_data();
-        slice cs = data.begin_parse();
-        slice cs0 = cs;
-        ;; (int votingEndsAt, int yes_count, int no_count, cell dict) = load_data(1);
-        throw_unless(1394, now() <= cs~load_uint(32));
-        throw_unless(1395, sum2hack(cs~load_uint(64), 1 << 32) < 100);
-        (int chain, int address) = parse_std_addr(sender_address);
-        cell dict = cs~load_dict();
-        cell ans = dict~udict_set_get_ref(32, address % 32, empty_cell());
-        ifnot (cell_null?(ans)){
-            reply_msg(sender_address, "ok"u, 8 * 2);
-            commit();
-            throw(1397);
-        }
-
-        if (in_msg_body~load_bool()) {
-            int b = inc(cs0~load_uint(64));
-            set_data(
-                begin_cell()
-                    .store_uint(b, 64)
-                    .store_slice(cs0~load_bits(32))
-                    .store_dict(dict)
-                    .end_cell()
-            );
-
-        }
-        else {
-            var a = cs0~load_uint(64 + 32);
-            set_data(
-                begin_cell()
-                    .store_uint(inc(a), 64 + 32)
-                    .store_dict(dict)
-                    .end_cell()
-            );
-        }
-    }
-    ;; elseif (in_msg_body~check_if_opcode$1()) {
-    ;;     slice owner = in_msg_body~load_msg_addr();
-    ;;     throw_unless(1342, equal_slices_bits(sender_address, calculate_child_address(child_state_init(owner))));
-    ;;     int istrue = in_msg_body~load_bool();
-    ;;     if (istrue) {
-    ;;         yescount -= 1;
-    ;;     } else {
-    ;;         nocount -= 1;
-    ;;     }
-    ;;     save_data(votingUntil, yescount, nocount);
-    ;;     reply_msg(owner, "error"u, 5 * 8);
-    ;; }
     else {
-        throw(0xffff);
+        var a = cs0~load_uint(64 + 32);
+        set_data(
+            begin_cell()
+                .store_uint(inc(a), 64 + 32)
+                .store_uint(current_storage, 1 << size)
+                .end_cell()
+        );
     }
 
 }
 
 _ proposalState() method_id {
-    (int _aa, int yes_count, int no_count) = load_data();
-    return (yes_count, no_count);
+    slice s = get_data().begin_parse();
+    s~skip_bits(32);
+    return (
+        s~load_uint(32),
+        s~load_uint(32)
+    );
 }
 () __tact_selector_hack_asm() impure asm """
 @atend @ 1 {
