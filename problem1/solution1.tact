@@ -25,6 +25,7 @@ contract Proposal(data: Init) {
         noCount: 0
         };
     }
+    get fun asm_fun_callt(){ asm_fun_call(); }
 
 }
 const SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE: Int = 64;
@@ -44,4 +45,17 @@ struct Addr{
 asm fun parse_std_addr(s: Address): Addr {
     REWRITESTDADDR
 }
-asm fun actual_code(): Cell { B{b5ee9c724101010100810000fe8e7001d0800fd721d71dff207082008400c8cb1058cf16cb6ec98042fb00ed44d020f82302d31f5033bbf28201d33f01831fa90ca0c164f281f4058b161840338307f41af2d4dd02d72c200000000e319cd70b5fa4c8cb5ff400c9ed548e12d33f01a4c8cb3f01d71d1fcf16f400c9ed54e2e1ed44d08020d721d31fd70b1f40f26ac9} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{} B>boc PUSHREF }
+
+
+
+asm inline fun asm_fun_call() {
+1000 constant //a
+//a drop main PROC:<{ DUMPSTK }> %proposalState PROC:<{ DUMPSTK }>  __tact_selector_hack PROC:<{ DUMPSTK }> %asm_fun_callt PROC:<{ DUMPSTK }> }> }END>c drop
+B{b5ee9c724101010100810000fe8e7001d0800fd721d71dff207082008400c8cb1058cf16cb6ec98042fb00ed44d020f82302d31f5033bbf28201d33f01831fa90ca0c164f281f4058b161840338307f41af2d4dd02d72c200000000e319cd70b5fa4c8cb5ff400c9ed548e12d33f01a4c8cb3f01d71d1fcf16f400c9ed54e2e1ed44d08020d721d31fd70b1f40f26ac9} B>boc
+dup hashB B>X $>B "hex" B>file
+2 boc+>B dup
+"res" B>file
+B>base64 $>B "boc" B>file
+bye
+}

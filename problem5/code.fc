@@ -17,8 +17,10 @@ builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_}
 
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal(int amount, cell in_msg_full, slice in_msg_body) impure {
-    if(amount >= const::min_amount) {
-
+    if (in_msg_body.slice_empty?()) {
+        return ();
+    }
+    if (amount >= const::min_amount) {
         cell data = get_data();
         slice cs = data.begin_parse();
         slice cs0 = cs;

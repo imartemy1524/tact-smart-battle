@@ -1,43 +1,42 @@
 #include "./imports/stdlib.fc";
 (slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
+(slice, int) slice_stats_with_0(slice input) asm "x{00000000001_} SDBEGINSQ";
+int starts_with(slice a, slice b) asm "SDPFX";
 int inc(int v) asm "INC";
 const int size = 7;
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    int bool = in_msg_body~check_if_op_and_1();
+    if(in_msg_body.slice_empty?()){
+        return ();
+    }
     slice dataparser = get_data().begin_parse();
     slice data2 = dataparser;
     throw_unless(2, now() <= (dataparser~load_uint(32 + 64) >> 64));
-
-    int current_storage = dataparser.preload_uint(size + 32 + 4);
-
-    int c = in_msg_full.begin_parse().preload_uint(size + 32 + 4);
-    throw_unless(1, (current_storage == 0) | (current_storage != c));
+    slice c = in_msg_full.begin_parse().preload_bits(size + 32 + 4);
+    throw_if(1, c.equal_slices_bits(dataparser));
+    int bool = in_msg_body~check_if_op_and_1();
     ifnot (bool) {
-        ;; use SDFIRST instead
         int b = inc(data2~load_uint(64));
         set_data(
             begin_cell()
                 .store_uint(b, 64)
                 .store_slice(data2.preload_bits(32))
-                .store_uint(c, size + 32 + 4)
+                .store_slice(c)
                 .end_cell()
         );
-
     }
     else {
         var a = data2.preload_uint(64 + 32);
         set_data(
             begin_cell()
                 .store_uint(inc(a), 64 + 32)
-                .store_uint(c, size + 32 + 4)
+                .store_slice(c)
                 .end_cell()
         );
     }
-
 }
 
-_ proposalState() method_id(-14) {
+_ proposalState() method_id (-14) {
     slice s = get_data().begin_parse();
     s~skip_bits(32);
     return (
@@ -52,7 +51,6 @@ _ proposalState() method_id(-14) {
     execute current@ context@ current!
     {
         }END> b>
-
         <{
             IFNOTJMP:<{
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
@@ -65,6 +63,6 @@ swap <s ref@
 } does @atend !
 """;
 
-() __tact_selector_hack() method_id(65535) {
+() __tact_selector_hack() method_id (65535) {
     return __tact_selector_hack_asm();
 }

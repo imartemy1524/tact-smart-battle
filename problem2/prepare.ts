@@ -32,7 +32,7 @@ async function replaceConstantInTactFile(codeToReplace: Cell) {
 
         // Replace the blablabla with constant f
         const updatedContent = content.replace(
-            /asm fun actual_code\(\): Cell \{ B\{.+\} B>boc PUSHREF }/,
+            /B\{.+\} B>boc PUSHREF }/,
             `asm fun actual_code(): Cell { B{${code}} B>boc PUSHREF }`,
         );
 
