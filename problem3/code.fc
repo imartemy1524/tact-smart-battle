@@ -4,14 +4,16 @@
 int starts_with(slice a, slice b) asm "SDPFX";
 int inc(int v) asm "INC";
 const int size = 43; ;; btw it can be 44, 45 and more
+(cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY
+// <{ }>PUSHCONT IFJMP
+0 THROWIF
+""";
 ;;; adds 2 uin64 (containing 2 uint32)
-() recv_internal(cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) {
-        return ();
-    }
-    slice dataparser = get_data().begin_parse();
-    slice data2 = dataparser;
-    throw_unless(2, now() <= (dataparser~load_uint(32 + 64) >> 64));
+() recv_internal() impure {
+    (cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
+    slice data2 = get_data().begin_parse();
+    slice dataparser = data2;
+    throw_unless(2, (dataparser~load_uint(32 + 64) >> 64) >= now());
     slice c = in_msg_full.begin_parse().preload_bits(size);
     throw_if(1, c.equal_slices_bits(dataparser));
     int bool = in_msg_body~check_if_op_and_1();
@@ -52,6 +54,7 @@ _ proposalState() method_id (-14) {
     {
         }END> b>
         <{
+            // method code, in_msg_body
             IFNOTJMP:<{
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>

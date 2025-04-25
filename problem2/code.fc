@@ -1,9 +1,9 @@
 #include "./imports/stdlib.fc";
-(slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
+(slice, int) check_if_op_and_1(slice input) asm "x{193B63CDC_} SDBEGINSQ";
 int sum2hack(int a, int b) asm "DIVMOD ADD";
 int inc(int a) asm "INC";
 slice subslice(slice a, int from, int to) asm "SDSUBSTR";
-
+int ends_with(slice a, slice b) asm "SDSFXREV";
 (int, int, int, slice, int) load_data() inline {
     cell data = get_data();
     var cs = data.begin_parse();
@@ -17,35 +17,29 @@ slice subslice(slice a, int from, int to) asm "SDSUBSTR";
     return (votingEndingAt, yesCount, noCount, master, proposalId);
 }
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    slice data = get_data().begin_parse();
     ;; if deploy message
     if (slice_bits(in_msg_body) != 33) {
-        slice sender = subslice(in_msg_full.begin_parse(), 4, 267);
-        slice data = get_data().begin_parse();
-        slice master = data~load_bits(267);
-        throw_unless(2025, equal_slices_bits(sender, master));
+        slice sender = subslice(cs, 4, 267);
+        throw_unless(2025, ends_with(data, sender));
         set_data(
             begin_cell()
-                .store_uint(in_msg_body.preload_uint(32), 32) ;; 32 bits
-                .store_uint(0, 64) ;; yes count + no count
-                .store_bool(false) ;; skip dict
-                .store_uint(data.preload_uint(6), 6) ;; proposalId
-                .store_slice(master)
+                .store_slice(in_msg_body) ;; 32 bits
+                .store_slice(data) ;; 65 empty bits + uint6 (proposal) + address (master)
                 .end_cell()
         );
         return ();
     }
-    slice cs = in_msg_full.begin_parse();
-    slice data = get_data().begin_parse();
     slice data0 = data;
 
-    throw_unless(1394, now() <= data~load_uint(32));
+    throw_unless(1, now() <= data~load_uint(32));
     int until_ = data~load_uint(64);
-    throw_unless(1395, sum2hack(until_, 1 << 32) < 100);
+    throw_unless(2, sum2hack(until_, 1 << 32) < 100);
     cell dict = data~load_dict();
     dict~dict_set_get(125, cs.preload_bits(125), "");
-    in_msg_body~skip_op();
-    int value = in_msg_body.preload_uint(1);
-    if (value) {
+
+    if (in_msg_body~check_if_op_and_1()) {
         int a = inc(
             data0~load_uint(64)
         );

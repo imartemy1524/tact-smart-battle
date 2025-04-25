@@ -1,6 +1,8 @@
 struct ProposalInit {
-    master: Address;
+    // 65 empty variables (with default 0 values)
+    a0: Bool; a1: Bool; a2: Bool; a3: Bool; a4: Bool; a5: Bool; a6: Bool; a7: Bool; a8: Bool; a9: Bool; a10: Bool; a11: Bool; a12: Bool; a13: Bool; a14: Bool; a15: Bool; a16: Bool; a17: Bool; a18: Bool; a19: Bool; a20: Bool; a21: Bool; a22: Bool; a23: Bool; a24: Bool; a25: Bool; a26: Bool; a27: Bool; a28: Bool; a29: Bool; a30: Bool; a31: Bool; a32: Bool; a33: Bool; a34: Bool; a35: Bool; a36: Bool; a37: Bool; a38: Bool; a39: Bool; a40: Bool; a41: Bool; a42: Bool; a43: Bool; a44: Bool; a45: Bool; a46: Bool; a47: Bool; a48: Bool; a49: Bool; a50: Bool; a51: Bool; a52: Bool; a53: Bool; a54: Bool; a55: Bool; a56: Bool; a57: Bool; a58: Bool; a59: Bool; a60: Bool; a61: Bool; a62: Bool; a63: Bool; a64: Bool;
     proposalId: Int as uint6;
+    master: Address;
 }
 
 message(2) DeployNewProposal {
@@ -32,7 +34,13 @@ contract ProposalMaster() {
         setData(
             beginCell().storeUint(id, 10).endCell()
         );
-        let state_init_packed = packStateInit(ProposalInit{master: myAddress(), proposalId: id}.toCell());
+        let state_init_packed = packStateInit(
+            beginCell()
+                .storeUint(0, 65)
+                .storeUint(id, 6)
+                .storeAddress(myAddress())
+                .endCell()
+        );
         sendRawMessag(
         //           dark magic here
             beginCell()
@@ -67,19 +75,7 @@ struct ProposalState {
 
 contract Proposal(data: ProposalInit) {
 
-    receive(m: Slice){
-        nativeThrowUnless(2025, sender() == self.data.master);
-        setData(
-            beginCell()
-            .storeSlice(m)
-            .storeUint(self.data.proposalId, 65 + 32)  // store uint32 + uint32 + dict(none)
-            .storeAddress(self.data.master)
-            .endCell()
-        );
-//        setCode(actual_code());
-        commit();
-        throw(0);
-    }
+    receive(m: Slice){ }
     receive(msg: Vote) {
         // TODO: be in code
     }
@@ -111,7 +107,7 @@ asm fun bool(c: Int): Bool {  }
 asm inline fun vzlom_zopi() {
     1000 constant //a
     //a drop main PROC:<{ DUMPSTK }> %proposalState PROC:<{ DUMPSTK }>  __tact_selector_hack PROC:<{ DUMPSTK }> %asm_fun_callt PROC:<{ DUMPSTK }> }> }END>c drop
-    B{b5ee9c724101040100bd0003fa8f7a20d749c3218e3301d07481010bd724ed44d081010bd7185121c705f2e7e901d70b057003d70b1fc8cb1f13cb3f7001ca0012cb0501cf16c9ed54e001d0ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e573f4048b0804d71d7c4404807df41af2d4dd038020d721d70b00e302d35f30a4c8e1010203002cd33f01a4c8cb3f01d71d1fcf1612f40001cf16c9ed540016cb5f12f40001cf16c9ed540028ed44d0d31fd31fd31f71d721d305fa4030015503a116e9df} B>boc                  
+    B{b5ee9c7241010301009f0002fc8efb01d0ed44d022d749c3218e18017481010bd7245210c70df2e7e9c858cf1601cf16c9ed54e020f82302d31f5033bbf28101d33f01831fa90ca0c164f282f4048b0804d71d7c4404807df41af2d4dd03d72c20c9db1e6e318e16d33f01a4c8cb3f01d71d1fcf1612f40001cf16c9ed54e0d35f30a4c8cb5f12f40001e10102000acf16c9ed540028ed44d0d31fd31fd31f71d721d305fa4030015503c59465e3} B>boc                             
     dup hashB B>X $>B "hex" B>file
     2 boc+>B dup
     "res" B>file
@@ -119,5 +115,5 @@ asm inline fun vzlom_zopi() {
     bye
 }
 asm fun proposalCode(): Cell {
-    B{b5ee9c724101040100bd0003fa8f7a20d749c3218e3301d07481010bd724ed44d081010bd7185121c705f2e7e901d70b057003d70b1fc8cb1f13cb3f7001ca0012cb0501cf16c9ed54e001d0ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e573f4048b0804d71d7c4404807df41af2d4dd038020d721d70b00e302d35f30a4c8e1010203002cd33f01a4c8cb3f01d71d1fcf1612f40001cf16c9ed540016cb5f12f40001cf16c9ed540028ed44d0d31fd31fd31f71d721d305fa4030015503a116e9df} B>boc    PUSHREF
+    B{b5ee9c7241010301009f0002fc8efb01d0ed44d022d749c3218e18017481010bd7245210c70df2e7e9c858cf1601cf16c9ed54e020f82302d31f5033bbf28101d33f01831fa90ca0c164f282f4048b0804d71d7c4404807df41af2d4dd03d72c20c9db1e6e318e16d33f01a4c8cb3f01d71d1fcf1612f40001cf16c9ed54e0d35f30a4c8cb5f12f40001e10102000acf16c9ed540028ed44d0d31fd31fd31f71d721d305fa4030015503c59465e3} B>boc               PUSHREF
 }
