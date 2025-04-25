@@ -1,5 +1,6 @@
 #include "./imports/stdlib.fc";
-(slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
+(slice, int) check_if_op_and_1(slice input) asm "x{193B63CDC_} SDBEGINSQ";
+(slice, int) check_if_op_and_0(slice input) asm "x{193B63CD4_} SDBEGINSQ";
 builder store_non_bounced(builder b) impure asm "x{42_} STSLICECONST";
 slice subslice(slice a, int from, int to) asm "SDSUBSTR";
 
@@ -26,15 +27,13 @@ int sum2hack(int a, int b) asm "DIVMOD ADD";
 
     slice cs = get_data().begin_parse();
     slice cs0 = cs;
-    ;; (int votingEndsAt, int yes_count, int no_count, cell dict) = load_data(1);
+
     throw_unless(345, now() <= cs~load_uint(32));
     throw_unless(346, sum2hack(cs~load_uint(64), 1 << 32) < 100);
 
     cell dict = cs.preload_dict();
-    cell ans = dict~udict_set_get_ref(256, sender_address.preload_uint(256), empty_cell());
-    throw_unless(3532, cell_null?(ans));
-    in_msg_body~skip_op();
-    ifnot (in_msg_body~load_bool()) {
+    dict~dict_set_get(267, sender_address, "");
+    ifnot (in_msg_body~check_if_op_and_1()) {
         int b = inc(cs0~load_uint(64));
         set_data(
             begin_cell()
@@ -61,7 +60,7 @@ _ proposalState() method_id (-14) {
     s~skip_bits(32);
     return (
         s~load_uint(32),
-        s~load_uint(32)
+        s.preload_uint(32)
     );
 }
 () __tact_selector_hack_asm() impure asm """

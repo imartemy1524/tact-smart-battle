@@ -55,7 +55,7 @@ contract ProposalMaster() {
     }
 }
 
-message(1) Vote {
+message Vote {
     value: Bool;
 }
 
@@ -105,5 +105,7 @@ asm fun getData(): Cell { c4 PUSH }
 asm extends fun storeDict(self: Builder, dict: Cell): Builder {
     SWAP STDICT
 }
-asm fun actual_code(): Cell { B{b5ee9c7241010201008d0001e08e6301d0ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e573f4048b0804d71d7c4404807df41af2d4dd038020d721d70b008e16d33f01a4c8cb3f01d71d1fcf1612f40001cf16c9ed548e10d35f30a4c8cb5f12f40001cf16c9ed54e2e180f2f4a413f4bcf2c80b01002fa7fffcbb513434c7f4c7f4c7dc75c874c7fe900c005540e0980f442f} B>boc PUSHREF }
+asm fun actual_code(): Cell { B{b5ee9c7241010201008b0001dc8e6101d0ed44d020f82302d31f5033bbf2e57201d33f01831fa90ca0c164f2e573f4048b0804d71d7c4404807df41af2d4dd038020d721d70b008e16d33f01a4c8cb3f01d71d1fcf1612f40001cf16c9ed54e0d35f30a4c8cb5f12f40001cf16c9ed54e180f2f4a413f4bcf2c80b01002fa7fffcbb513434c7f4c7f4c7dc75c874c7fe900c005540e00faad4fd} B>boc    PUSHREF }
 asm fun bool(c: Int): Bool {  }
+
+
