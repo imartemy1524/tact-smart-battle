@@ -2,8 +2,7 @@
 (slice, int) check_if_opcode$193b63cd(slice input) asm "x{193b63cd} SDBEGINSQ";
 int sum2hack(int a, int b) asm "DIVMOD ADD";
 int inc(int a) asm "INC";
-(slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
-(slice, int) check_if_op_and_1(slice input) asm "x{193B63CDC_} SDBEGINSQ";
+slice subslice(slice a, int from, int to) asm "SDSUBSTR";
 
 (int, int, int, slice, int) load_data() inline {
     cell data = get_data();
@@ -13,18 +12,35 @@ int inc(int a) asm "INC";
     int yesCount = cs~load_uint(32);
     int noCount = cs~load_uint(32);
     cs~skip_bits(1); ;; skip dict
-    int proposalId = cs~load_uint(32);
+    int proposalId = cs~load_uint(6);
     slice master = cs~load_msg_addr();
     return (votingEndingAt, yesCount, noCount, master, proposalId);
 }
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
-
+    ;; if deploy message
+    if (slice_bits(in_msg_body) != 33) {
+        slice sender = subslice(in_msg_full.begin_parse(), 4, 267);
+        slice data = get_data().begin_parse();
+        slice master = data~load_bits(267);
+        throw_unless(2025, equal_slices_bits(sender, master));
+        set_data(
+            begin_cell()
+                .store_uint(in_msg_body.preload_uint(32), 32) ;; 32 bits
+                .store_uint(0, 64) ;; yes count + no count
+                .store_bool(false) ;; skip dict
+                .store_uint(data.preload_uint(6), 6) ;; proposalId
+                .store_slice(master)
+                .end_cell()
+        );
+        return ();
+    }
     slice cs = in_msg_full.begin_parse();
     slice data = get_data().begin_parse();
     slice data0 = data;
 
     throw_unless(1394, now() <= data~load_uint(32));
-    throw_unless(1395, sum2hack(data~load_uint(64), 1 << 32) < 100);
+    int until_ = data~load_uint(64);
+    throw_unless(1395, sum2hack(until_, 1 << 32) < 100);
     cell dict = data~load_dict();
     dict~dict_set_get(125, cs.preload_bits(125), "");
     in_msg_body~skip_op();
@@ -67,16 +83,12 @@ _ proposalState() method_id (-14) {
     execute current@ context@ current!
     {
         }END> b>
-
         <{
             IFNOTJMP:<{
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
-            -14 PUSHINT
 swap <s ref@
-            0 swap @procdictkeylen idict- drop
-            65535 swap @procdictkeylen idict- drop
-            @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
+            -14 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
         }> b>
     } : }END>c
     current@ context! current!

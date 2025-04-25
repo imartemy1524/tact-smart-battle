@@ -32,7 +32,7 @@ async function replaceConstantInTactFile(codeToReplace: Cell) {
 
         // Replace the blablabla with constant f
         const updatedContent = content.replace(
-            /B\{.+\} B>boc/,
+            /B\{.+\} B>boc/g,
             `B{${code}} B>boc `,
         );
 

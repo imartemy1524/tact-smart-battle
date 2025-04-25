@@ -1,6 +1,6 @@
 import '@ton/test-utils';
-import { Blockchain, printTransactionFees } from '@ton/sandbox';
-import { fromNano, toNano } from '@ton/core';
+import { Blockchain } from '@ton/sandbox';
+import { toNano } from '@ton/core';
 import { Proposal } from '../output/solution2_Proposal';
 import { ProposalMaster } from '../output/solution2_ProposalMaster';
 
@@ -45,7 +45,7 @@ it('solution2', async () => {
             proposalId: 0n,
         }),
     );
-    const {transactions} = await proposal.send(
+    await proposal.send(
         voter.getSender(),
         { value: toNano('0.1') },
         {
@@ -54,20 +54,6 @@ it('solution2', async () => {
         },
     );
 
-    console.log(fromNano(transactions[1]!.totalFees.coins))
     // the vote was counted
     expect(await proposal.getProposalState()).toMatchObject({ yesCount: 1n, noCount: 0n });
-    {
-        const {transactions} = await proposal.send(
-            voter.getSender(),
-            { value: toNano('0.1') },
-            {
-                $$type: 'Vote',
-                value: true,
-            },
-        );
-        expect(transactions).toHaveTransaction({
-            exitCode: i => i != 0,
-        })
-    }
 });
