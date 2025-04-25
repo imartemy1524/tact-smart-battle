@@ -40,7 +40,7 @@ it('3', async () => {
 
         expect(await proposal.getProposalState()).toMatchObject({ yesCount: BigInt(i + 1), noCount: 0n });
     }
-    const voter = await blockchain.treasury('voter10');
+    const voter = await blockchain.treasury(`voter${count - 1n}`);
     {
         const { transactions: transactions1 } = await proposal.send(
             voter.getSender(),

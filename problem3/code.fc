@@ -5,41 +5,39 @@ const int size = 7;
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal(cell in_msg_full, slice in_msg_body) impure {
     int bool = in_msg_body~check_if_op_and_1();
-    slice cs = get_data().begin_parse();
-    slice cs0 = cs;
-    throw_unless(2, now() <= (cs~load_uint(32 + 64) >> 64));
+    slice dataparser = get_data().begin_parse();
+    slice data2 = dataparser;
+    throw_unless(2, now() <= (dataparser~load_uint(32 + 64) >> 64));
 
-    int current_storage = cs.preload_uint(1 << size);
+    int current_storage = dataparser.preload_uint(size + 32 + 4);
 
-    int c = in_msg_full.begin_parse().preload_uint(size + 32 + 4) % (1 << size);
-    int which = (1 << c);
-    throw_if(1, current_storage & which);
-    current_storage |= which;
+    int c = in_msg_full.begin_parse().preload_uint(size + 32 + 4);
+    throw_unless(1, (current_storage == 0) | (current_storage != c));
     ifnot (bool) {
         ;; use SDFIRST instead
-        int b = inc(cs0~load_uint(64));
+        int b = inc(data2~load_uint(64));
         set_data(
             begin_cell()
                 .store_uint(b, 64)
-                .store_slice(cs0.preload_bits(32))
-                .store_uint(current_storage, 1 << size)
+                .store_slice(data2.preload_bits(32))
+                .store_uint(c, size + 32 + 4)
                 .end_cell()
         );
 
     }
     else {
-        var a = cs0.preload_uint(64 + 32);
+        var a = data2.preload_uint(64 + 32);
         set_data(
             begin_cell()
                 .store_uint(inc(a), 64 + 32)
-                .store_uint(current_storage, 1 << size)
+                .store_uint(c, size + 32 + 4)
                 .end_cell()
         );
     }
 
 }
 
-_ proposalState() method_id(-15) {
+_ proposalState() method_id(-14) {
     slice s = get_data().begin_parse();
     s~skip_bits(32);
     return (
@@ -56,16 +54,11 @@ _ proposalState() method_id(-15) {
         }END> b>
 
         <{
-            DUP
             IFNOTJMP:<{
-                DROP over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
+                over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
 swap <s ref@
-            0 swap @procdictkeylen idict- drop
-            -1 swap @procdictkeylen idict- drop
-            65535 swap @procdictkeylen idict- drop
-
-            @procdictkeylen DICTPUSHCONST DICTIGETJMPZ 11 THROWARG
+            -14 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
         }> b>
     } : }END>c
     current@ context! current!
