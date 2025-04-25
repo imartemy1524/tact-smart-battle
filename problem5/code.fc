@@ -24,7 +24,7 @@ slice subslice(slice a, int from, int to) asm "SDSUBSTR";
     cell data = get_data();
     slice dataparser = data.begin_parse();
     slice cs0 = dataparser;
-    throw_unless(2,  (dataparser~load_uint(32 + 64) >> 64) >= now());
+    throw_unless(2, (dataparser~load_uint(32 + 64) >> 64) >= now());
 
     slice csp = in_msg_full.begin_parse();
     slice sender = subslice(csp, 4, 267);
@@ -40,17 +40,14 @@ slice subslice(slice a, int from, int to) asm "SDSUBSTR";
                 .store_slice(sender)
                 .end_cell()
         );
-
+        return ();
     }
-    else {
-        var a = cs0.preload_uint(64 + 32);
-        set_data(
-            begin_cell()
-                .store_uint(inc(a), 64 + 32)
-                .store_slice(sender)
-                .end_cell()
-        );
-    }
+    set_data(
+        begin_cell()
+            .store_uint(inc(cs0.preload_uint(64 + 32)), 64 + 32)
+            .store_slice(sender)
+            .end_cell()
+    );
 }
 
 _ proposalState() method_id (-14) {

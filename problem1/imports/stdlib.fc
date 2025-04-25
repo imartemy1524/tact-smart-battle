@@ -553,7 +553,7 @@ cell idict_set(cell dict, int key_len, int index, slice value) asm(value index d
 (cell, ()) ~idict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTISET";
 cell dict_set(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSET";
 (cell, ()) ~dict_set(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSET";
-(cell, ()) ~dict_set_get(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSETGET 1245 THROWIF";
+(cell, ()) ~dict_set_get(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSETGET 34 THROWIF";
 (cell, int) udict_add?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUADD";
 (cell, int) udict_replace?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUREPLACE";
 (cell, int) idict_add?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTIADD";

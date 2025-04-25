@@ -24,16 +24,16 @@ const int size = 43; ;; btw it can be 44, 45 and more
                 .store_slice(c)
                 .end_cell()
         );
+        return ();
     }
-    else {
-        var a = data2.preload_uint(64 + 32);
-        set_data(
-            begin_cell()
-                .store_uint(inc(a), 64 + 32)
-                .store_slice(c)
-                .end_cell()
-        );
-    }
+    var a = data2.preload_uint(64 + 32);
+    set_data(
+        begin_cell()
+            .store_uint(inc(a), 64 + 32)
+            .store_slice(c)
+            .end_cell()
+    );
+
 }
 
 _ proposalState() method_id (-14) {
