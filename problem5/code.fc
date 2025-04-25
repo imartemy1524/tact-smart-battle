@@ -6,7 +6,6 @@ builder store_non_bounced(builder b) impure asm "x{42_} STSLICECONST";
 builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_} STSLICECONST";
 () reply_msg(slice to) impure inline {
     cell msg2sender = begin_cell()
-    ;; .store_uint(0x10, 6)
         .store_non_bounced()
         .store_slice(to)
         .store_none_flags() ;; slore flags
@@ -15,45 +14,43 @@ builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_}
 }
 slice subslice(slice a, int from, int to) asm "SDSUBSTR";
 
-;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal(int amount, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) {
         return ();
     }
-    if (amount >= const::min_amount) {
-        cell data = get_data();
-        slice dataparser = data.begin_parse();
-        slice cs0 = dataparser;
-        throw_unless(2,  (dataparser~load_uint(32 + 64) >> 64) >= now());
-
-        slice csp = in_msg_full.begin_parse();
-        slice sender = subslice(csp, 4, 267);
-        reply_msg(sender);
-        throw_if(1, sender.equal_slices_bits(dataparser));
-
-        ;; throw_unless(1, slice_empty?(dataparser) | ~ equal_slices_bits(dataparser, sender));
-        ifnot (in_msg_body~check_if_op_and_1()) {
-            int b = inc(cs0~load_uint(64));
-            set_data(
-                begin_cell()
-                    .store_uint(b, 64)
-                    .store_slice(cs0.preload_bits(32))
-                    .store_slice(sender)
-                    .end_cell()
-            );
-
-        }
-        else {
-            var a = cs0.preload_uint(64 + 32);
-            set_data(
-                begin_cell()
-                    .store_uint(inc(a), 64 + 32)
-                    .store_slice(sender)
-                    .end_cell()
-            );
-        }
+    if (amount < const::min_amount) {
+        return ();
     }
+    cell data = get_data();
+    slice dataparser = data.begin_parse();
+    slice cs0 = dataparser;
+    throw_unless(2,  (dataparser~load_uint(32 + 64) >> 64) >= now());
 
+    slice csp = in_msg_full.begin_parse();
+    slice sender = subslice(csp, 4, 267);
+    reply_msg(sender);
+    throw_if(1, sender.equal_slices_bits(dataparser));
+
+    ifnot (in_msg_body~check_if_op_and_1()) {
+        int b = inc(cs0~load_uint(64));
+        set_data(
+            begin_cell()
+                .store_uint(b, 64)
+                .store_slice(cs0.preload_bits(32))
+                .store_slice(sender)
+                .end_cell()
+        );
+
+    }
+    else {
+        var a = cs0.preload_uint(64 + 32);
+        set_data(
+            begin_cell()
+                .store_uint(inc(a), 64 + 32)
+                .store_slice(sender)
+                .end_cell()
+        );
+    }
 }
 
 _ proposalState() method_id (-14) {
