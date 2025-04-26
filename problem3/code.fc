@@ -1,9 +1,23 @@
 #include "./imports/stdlib.fc";
 (slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
 (slice, int) slice_stats_with_0_0(slice input) asm "<b 0 8 u, b> <s SDBEGINSQ";
+(slice, int) slice_stats_with_1_1(slice input) asm "<b 1 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_stats_with_0_1(slice input) asm "<b 0 4 u, 1 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0(slice input) asm "<b 0 4 u, b> <s SDBEGINSQ";
+(slice, ()) check_if_starts_with_00(slice input) impure asm """
+x{00} SDBEGINSQ <{
+    // check that date is correct
+    32 PLDU NOW GEQ 2 THROWIFNOT
+    x{00000001C_} SDBEGINSQ IFJMP:<{
+        <b 0 4 u, 1 4 u, 3 2 u, b> PUSHREF c4 POPCTR
+    }>
+    <b 1 4 u, 0 4 u, b> PUSHREF c4 POP
+
+}> PUSHCONT
+    IFJMP
+""";
 int sum2hack(int a, int b) asm "DIVMOD ADD";
-int starts_with(slice a, slice b) asm "SDPFX";
+int starts_with(slice a, slice b) asm "SDPFXREV";
 int inc(int v) asm "INC";
 const int size = 4; ;; btw it can be 44, 45 and more
 (cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY 0 THROWIF""";
@@ -14,6 +28,8 @@ x{00000001C_} SDBEGINSQ IFNOTJMP:<{
 }>
 """;
 cell a0b1_c3() asm "<b 0 4 u, 1 4 u, 3 2 u, b> PUSHREF";
+cell a1b1_c3() asm "<b 1 4 u, 1 4 u, 3 2 u, b> PUSHREF";
+cell a1b1_c0() asm "<b 1 4 u, 1 4 u, 0 2 u, b> PUSHREF";
 cell a0b2() asm "<b 0 4 u, 2 4 u, b> PUSHREF";
 cell a0b3() asm "<b 0 4 u, 3 4 u, b> PUSHREF";
 cell a0b4() asm "<b 0 4 u, 4 4 u, b> PUSHREF";
@@ -22,6 +38,7 @@ cell a0b6() asm "<b 0 4 u, 6 4 u, b> PUSHREF";
 cell a0b7() asm "<b 0 4 u, 7 4 u, b> PUSHREF";
 cell a0b8() asm "<b 0 4 u, 8 4 u, b> PUSHREF";
 cell a0b9() asm "<b 0 4 u, 9 4 u, b> PUSHREF";
+cell a0b10() asm "<b 0 4 u, 10 4 u, b> PUSHREF";
 cell a1bo() asm "<b 1 4 u, 0 4 u, b> PUSHREF";
 cell b1a1() asm "<b 1 4 u, 1 4 u, b> PUSHREF";
 cell b1a2() asm "<b 2 4 u, 1 4 u, b> PUSHREF";
@@ -36,44 +53,21 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
 () recv_internal() impure {
     (cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
     slice data2 = get_data().begin_parse();
-    ;; a = 0 and b = 0
-    if (data2~slice_stats_with_0_0()) {
-        int when = (data2.preload_uint(32));
-        throw_unless(2, when >= now());
-        in_msg_body~set_data_ifnot_msgbody_bool();
-        set_data(a0b1_c3());
-        return ();
-    }
-    ;; a = 0, b = 1
-    ;; if(data2~slice_stats_with_0_1()){
-    ;;
-    ;; }
-    slice dataparser = data2;
-    int counterA = dataparser~load_uint(size);
-    int counterB = dataparser~load_uint(size);
-    if ((counterA == 0)) {
+    ;; asm optimized way to check wheter it is the first call
+    data2~check_if_starts_with_00();
+    if (data2~slice_starts_with_0()) {
+        int counterB = data2~load_uint(size);
         if ((counterB == 1)) {
             slice c = in_msg_full.begin_parse();
             c~skip_bits(43);
-            c = c.preload_bits(2);
-            throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
+            throw_if(1, c.starts_with(data2));
             ifnot (in_msg_body~check_if_op_and_1()) {
-                int b = inc(data2~load_uint(size));
-                set_data(
-                    begin_cell()
-                        .store_uint(b, size)
-                        .store_slice(data2.preload_bits(size))
-                        .store_slice(c)
-                        .end_cell()
-                );
+                set_data(a1b1_c0());
                 return ();
             }
-            ;; increasing b
+            ;; increasing needed
             set_data(
-                begin_cell()
-                    .store_uint(counterA, size)
-                    .store_uint(inc(counterB), size)
-                    .end_cell()
+                a0b2()
             );
             return ();
         }
@@ -105,13 +99,24 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
             set_data(a0b9());
             return ();
         }
-        ;; return ();
+        if (counterB == 9) {
+            set_data(a0b10());
+            return ();
+        }
+
+        return ();
     }
-    throw_if(13, counterA + counterB > 9);
-    if ((counterB == 1) & (counterA == 1)) {
+    ;; probably dont count on gas
+    if (data2~slice_stats_with_1_1()) {
         set_data(b1a2());
         return ();
     }
+    slice dataparser = data2;
+    int counterA = dataparser~load_uint(size);
+    int counterB = dataparser~load_uint(size);
+
+    ;; pass
+    throw_if(13, (counterA + counterB) > 9);
     if (counterB == 1) {
         set_data(b2a2());
         return ();
@@ -144,17 +149,17 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
 
     int bool = in_msg_body~check_if_op_and_1();
     throw_if(1, (counterB == 0) & (counterA == 1));
-    if ((counterB == 1) & (counterA == 1)) {
-        slice c = in_msg_full.begin_parse();
-        c~skip_bits(43);
-        c = c.preload_bits(2);
-        throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
-        set_data(
-            b1a2()
-        );
-        return ();
-
-    }
+    ;; if ((counterB == 1) & (counterA == 1)) {
+    ;;     slice c = in_msg_full.begin_parse();
+    ;;     c~skip_bits(43);
+    ;;     c = c.preload_bits(2);
+    ;;     throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
+    ;;     set_data(
+    ;;         b1a2()
+    ;;     );
+    ;;     return ();
+    ;;
+    ;; }
     ;; if b=0 and a=0 and vote for B => store users address
     ;; if b=1 and a=0 => check the address
 
