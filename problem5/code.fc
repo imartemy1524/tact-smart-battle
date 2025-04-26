@@ -13,11 +13,10 @@ builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_}
     send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 }
 slice subslice(slice a, int from, int to) asm "SDSUBSTR";
+(int, cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY 0 THROWIF""";
 
-() recv_internal(int amount, cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) {
-        return ();
-    }
+() recv_internal() impure {
+    (int amount, cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
     if (amount < const::min_amount) {
         return ();
     }

@@ -3,13 +3,14 @@ message(1) Vote {
 }
 
 struct ProposalState {
-    noCount: Int as uint32;
-    yesCount: Int as uint32;
+    noCount: Int as uint4;
+    yesCount: Int as uint4;
 }
 
 struct Init {
     votingEndingAt: Int as uint32;
-    proposalId: Int as uint224;
+    proposalId: Int as uint8;
+    // proposal id is always 0 BTW
 }
 
 contract Proposal(data: Init) {
@@ -34,7 +35,7 @@ asm fun setCode(code: Cell) {SETCODE}
 asm inline fun asm_fun_call() {
 1000 constant //a
 //a drop main PROC:<{ DUMPSTK }> %proposalState PROC:<{ DUMPSTK }>  __tact_selector_hack PROC:<{ DUMPSTK }> %aaa PROC:<{ DUMPSTK }> }> }END>c drop
-B{b5ee9c7241010101005b0000b28e4a20c700f240ed44d020d35f01ab3ff823bef28203d0d71d2a5204c705f24101d72c200000000e318e13d33f01a4c8cb3f01d71d1fcf1601cf16c9ed54e1d70b5fa4c8cb5f01cf16c9ed54e1ed44d08020d721d31fd70b1febb116bb} B>boc
+B{b5ee9c7241010201008f0001fc8e7b20c700f240ed44d020d31f01f823bef282d303d3035321a0c209f24d04d72c200000000e317103c00013b0bb8e3103d0d71d2a5203c705f241028e1401d32301a4c8cb2301d71d03cf1601cf16c9ed54e101d70b27a4c8cb2701cf16c9ed54e06c229dd32301a4c8cb2301cf16c9ed54e1d70b27a4c8cb27c9ed54e1010018ed44d08020d721d303d70b03bf51fed9} B>boc
 dup hashB B>X $>B "hex" B>file
 2 boc+>B dup
 "res" B>file
