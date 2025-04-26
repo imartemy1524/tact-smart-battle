@@ -1,12 +1,18 @@
 #include "./imports/stdlib.fc";
 (slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
-(slice, int) slice_stats_with_0(slice input) asm "x{00000000001_} SDBEGINSQ";
+(slice, int) slice_stats_with_0_0(slice input) asm "<b 0 8 u, b> <s SDBEGINSQ";
+(slice, int) slice_stats_with_0_1(slice input) asm "<b 0 4 u, 1 4 u, b> <s SDBEGINSQ";
 int sum2hack(int a, int b) asm "DIVMOD ADD";
 int starts_with(slice a, slice b) asm "SDPFX";
 int inc(int v) asm "INC";
 const int size = 4; ;; btw it can be 44, 45 and more
 (cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY 0 THROWIF""";
 
+(slice, ()) set_data_ifnot_msgbody_bool(slice in_msg_body) impure asm """
+x{00000001C_} SDBEGINSQ IFNOTJMP:<{
+    <b 1 4 u, 0 4 u, b> PUSHREF c4 POP
+}>
+""";
 cell a0b1_c3() asm "<b 0 4 u, 1 4 u, 3 2 u, b> PUSHREF";
 cell a0b2() asm "<b 0 4 u, 2 4 u, b> PUSHREF";
 cell a0b3() asm "<b 0 4 u, 3 4 u, b> PUSHREF";
@@ -30,32 +36,47 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
 () recv_internal() impure {
     (cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
     slice data2 = get_data().begin_parse();
-    slice dataparser = data2;
-    ;; throw_if(1024, now() > 1745767542); ;; int(time.time() + 24 * 60 * 60 + 60)
-    int counterA = dataparser~load_uint(size);
-    int counterB = dataparser~load_uint(size);
-    throw_if(13, counterA + counterB > 9);
-
-    ;; if ((counterB == 1) & (counterA == 1)) {
-    ;;     throw(1232);
-    ;; }
-    if ((counterA == 0) & (counterB == 0)) {
-        int when = (dataparser.preload_uint(32));
+    ;; a = 0 and b = 0
+    if (data2~slice_stats_with_0_0()) {
+        int when = (data2.preload_uint(32));
         throw_unless(2, when >= now());
-        ifnot (in_msg_body~check_if_op_and_1()) {
-            set_data(a1bo());
-            return ();
-        }
-        ;; slice c = in_msg_full.begin_parse();
-        ;; c~skip_bits(43);
-        ;; c = c.preload_bits(2);
-        ;; var a = data2.preload_uint(size * 2);
-        set_data(
-            a0b1_c3()
-        );
+        in_msg_body~set_data_ifnot_msgbody_bool();
+        set_data(a0b1_c3());
         return ();
     }
-    elseif ((counterA == 0)) {
+    ;; a = 0, b = 1
+    ;; if(data2~slice_stats_with_0_1()){
+    ;;
+    ;; }
+    slice dataparser = data2;
+    int counterA = dataparser~load_uint(size);
+    int counterB = dataparser~load_uint(size);
+    if ((counterA == 0)) {
+        if ((counterB == 1)) {
+            slice c = in_msg_full.begin_parse();
+            c~skip_bits(43);
+            c = c.preload_bits(2);
+            throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
+            ifnot (in_msg_body~check_if_op_and_1()) {
+                int b = inc(data2~load_uint(size));
+                set_data(
+                    begin_cell()
+                        .store_uint(b, size)
+                        .store_slice(data2.preload_bits(size))
+                        .store_slice(c)
+                        .end_cell()
+                );
+                return ();
+            }
+            ;; increasing b
+            set_data(
+                begin_cell()
+                    .store_uint(counterA, size)
+                    .store_uint(inc(counterB), size)
+                    .end_cell()
+            );
+            return ();
+        }
         if (counterB == 2) {
             set_data(a0b3());
             return ();
@@ -84,70 +105,55 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
             set_data(a0b9());
             return ();
         }
-
+        ;; return ();
     }
-    elseif (counterA >= 1) {
-        if ((counterB == 1) & (counterA == 1)) {
-            set_data(b1a2());
-            return ();
-        }
-        if (counterB == 1) {
-            set_data(b2a2());
-            return ();
-        }
-        if (counterA == 2) {
-            set_data(b2a3());
-            return ();
-        }
-        if (counterA == 3) {
-            set_data(b2a4());
-            return ();
-        }
-
-        if ((counterB == 2) & (counterA == 4)) {
-            set_data(b3a4());
-            return ();
-        }
-        if ((counterA == 4) & (counterB == 3)) {
-            set_data(b3a5());
-            return ();
-        }
-        if ((counterA == 5) & (counterB == 3)) {
-            set_data(b3a6());
-            return ();
-        }
-        if ((counterA == 6) & (counterB == 3)) {
-            set_data(b4a6());
-            return ();
-        }
+    throw_if(13, counterA + counterB > 9);
+    if ((counterB == 1) & (counterA == 1)) {
+        set_data(b1a2());
+        return ();
     }
+    if (counterB == 1) {
+        set_data(b2a2());
+        return ();
+    }
+    if (counterA == 2) {
+        set_data(b2a3());
+        return ();
+    }
+    if (counterA == 3) {
+        set_data(b2a4());
+        return ();
+    }
+
+    if ((counterB == 2) & (counterA == 4)) {
+        set_data(b3a4());
+        return ();
+    }
+    if ((counterA == 4) & (counterB == 3)) {
+        set_data(b3a5());
+        return ();
+    }
+    if ((counterA == 5) & (counterB == 3)) {
+        set_data(b3a6());
+        return ();
+    }
+    if ((counterA == 6) & (counterB == 3)) {
+        set_data(b4a6());
+        return ();
+    }
+
     int bool = in_msg_body~check_if_op_and_1();
     throw_if(1, (counterB == 0) & (counterA == 1));
-    if ((counterB <= 1) & ((counterA == 0) | (counterA == 1))) {
+    if ((counterB == 1) & (counterA == 1)) {
         slice c = in_msg_full.begin_parse();
         c~skip_bits(43);
         c = c.preload_bits(2);
-
         throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
-        ifnot (bool) {
-            int b = inc(data2~load_uint(size));
-            set_data(
-                begin_cell()
-                    .store_uint(b, size)
-                    .store_slice(data2.preload_bits(size))
-                    .store_slice(c)
-                    .end_cell()
-            );
-            return ();
-        }
-        var a = data2.preload_uint(size * 2);
         set_data(
-            begin_cell()
-                .store_uint(inc(a), size * 2)
-                .store_slice(c)
-                .end_cell()
+            b1a2()
         );
         return ();
+
     }
     ;; if b=0 and a=0 and vote for B => store users address
     ;; if b=1 and a=0 => check the address
@@ -189,6 +195,11 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
     ;; else {
     ;;     throw_if(1, bool);
     ;; }
+
+
+
+
+
     ifnot (bool) {
         int b = inc(data2~load_uint(size));
         set_data(
