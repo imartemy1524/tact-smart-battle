@@ -16,101 +16,75 @@ cell a0b6() asm "<b 0 4 u, 6 4 u, b> PUSHREF";
 cell a0b7() asm "<b 0 4 u, 7 4 u, b> PUSHREF";
 cell a0b8() asm "<b 0 4 u, 8 4 u, b> PUSHREF";
 cell a0b9() asm "<b 0 4 u, 9 4 u, b> PUSHREF";
-
 cell b1a1() asm "<b 1 4 u, 1 4 u, b> PUSHREF";
-cell b1a2() asm "<b 2 4 u, 1 4 u, b> PUSHREF";
+cell b1a2() asm "<b 1 4 u, 2 4 u, b> PUSHREF";
 cell b2a2() asm "<b 2 4 u, 2 4 u, b> PUSHREF";
-cell b2a3() asm "<b 3 4 u, 2 4 u, b> PUSHREF";
-cell b2a4() asm "<b 4 4 u, 2 4 u, b> PUSHREF";
-cell b3a4() asm "<b 4 4 u, 3 4 u, b> PUSHREF";
-cell b3a5() asm "<b 5 4 u, 3 4 u, b> PUSHREF";
-cell b3a6() asm "<b 6 4 u, 3 4 u, b> PUSHREF";
-cell b3a7() asm "<b 7 4 u, 3 4 u, b> PUSHREF";
+cell b2a3() asm "<b 2 4 u, 3 4 u, b> PUSHREF";
+cell b2a4() asm "<b 2 4 u, 4 4 u, b> PUSHREF";
+cell b3a4() asm "<b 3 4 u, 4 4 u, b> PUSHREF";
+cell b3a5() asm "<b 3 4 u, 5 4 u, b> PUSHREF";
+cell b3a6() asm "<b 3 4 u, 6 4 u, b> PUSHREF";
+cell b3a7() asm "<b 3 4 u, 7 4 u, b> PUSHREF";
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal() impure {
     (cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
     slice data2 = get_data().begin_parse();
     slice dataparser = data2;
+    ;; throw_if(1024, now() > 1745767542); ;; int(time.time() + 24 * 60 * 60 + 60)
     int counterA = dataparser~load_uint(size);
     int counterB = dataparser~load_uint(size);
+    throw_if(13, counterA + counterB > 9);
+
+    ;; if ((counterB == 1) & (counterA == 1)) {
+    ;;     throw(1232);
+    ;; }
     if ((counterA == 0) & (counterB == 0)) {
         int when = (dataparser.preload_uint(32));
         throw_unless(2, when >= now());
         ;; set_data(a0b1()); ;; TODO: add sender address
         ;; return ();
     }
-    ;; if ((counterA == 0) & (counterB == 2)) {
-    ;;     set_data(a0b3());
-    ;;     return ();
-    ;; }
-    ;; if (counterB == 3) {
-    ;;     set_data(a0b4());
-    ;;     return ();
-    ;; }
-    ;; if (counterB == 4) {
-    ;;     set_data(a0b5());
-    ;;     return ();
-    ;; }
-    ;; if (counterB == 5) {
-    ;;     set_data(a0b6());
-    ;;     return ();
-    ;; }
-    ;; if (counterB == 6) {
-    ;;     set_data(a0b7());
-    ;;     return ();
-    ;; }
-    ;; if (counterB == 7) {
-    ;;     set_data(a0b8());
-    ;;     return ();
-    ;; }
-    ;; if (counterB == 8) {
-    ;;     set_data(a0b9());
-    ;;     return ();
-    ;; }
+    elseif ((counterA == 0)) {
+        if (counterB == 2) {
+            set_data(a0b3());
+            return ();
+        }
+        if (counterB == 3) {
+            set_data(a0b4());
+            return ();
+        }
+        if (counterB == 4) {
+            set_data(a0b5());
+            return ();
+        }
+        if (counterB == 5) {
+            set_data(a0b6());
+            return ();
+        }
+        if (counterB == 6) {
+            set_data(a0b7());
+            return ();
+        }
+        if (counterB == 7) {
+            set_data(a0b8());
+            return ();
+        }
+        if (counterB == 8) {
+            set_data(a0b9());
+            return ();
+        }
 
-    ;; if ((counterB == 1) & (counterA == 1)) {
-    ;;     set_data(b1a2());
-    ;;     return ();
-    ;; }
-    ;; if ((counterB == 1) & (counterA == 2)) {
-    ;;     set_data(b2a2());
-    ;;     return ();
-    ;; }
-    ;; if ((counterB == 2) & (counterA == 2)) {
-    ;;     set_data(b2a3());
-    ;;     return ();
-    ;; }
-    ;; if ((counterB == 2) & (counterA == 3)) {
-    ;;     set_data(b2a4());
-    ;;     return ();
-    ;; }
-    ;; if ((counterB == 2) & (counterA == 4)) {
-    ;;     set_data(b3a4());
-    ;;     return ();
-    ;; }
-    ;; if ((counterB == 3) & (counterA == 4)) {
-    ;;     set_data(b3a5());
-    ;;     return ();
-    ;; }
-    ;; if ((counterB == 3) & (counterA == 5)) {
-    ;;     set_data(b3a6());
-    ;;     return ();
-    ;; }
-    ;; if ((counterB == 3) & (counterA == 6)) {
-    ;;     set_data(b3a7());
-    ;;     return ();
-    ;; }
-
+    }
     int bool = in_msg_body~check_if_op_and_1();
 
-    if ((counterB <= 1) & (counterA == 0)) {
+    if (counterB <= 1 & (counterA == 0)) {
         slice c = in_msg_full.begin_parse().preload_bits(43);
         throw_if(1, c.equal_slices_bits(dataparser));
         ifnot (bool) {
-            int a = inc(data2~load_uint(size));
+            int b = inc(data2~load_uint(size));
             set_data(
                 begin_cell()
-                    .store_uint(a, size)
+                    .store_uint(b, size)
                     .store_slice(data2.preload_bits(size))
                     .store_slice(c)
                     .end_cell()
