@@ -6,47 +6,131 @@ int starts_with(slice a, slice b) asm "SDPFX";
 int inc(int v) asm "INC";
 const int size = 4; ;; btw it can be 44, 45 and more
 (cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY 0 THROWIF""";
+
+cell a0b1() asm "<b 0 4 u, 1 4 u, b> PUSHREF";
+cell a0b2() asm "<b 0 4 u, 2 4 u, b> PUSHREF";
+cell a0b3() asm "<b 0 4 u, 3 4 u, b> PUSHREF";
+cell a0b4() asm "<b 0 4 u, 4 4 u, b> PUSHREF";
+cell a0b5() asm "<b 0 4 u, 5 4 u, b> PUSHREF";
+cell a0b6() asm "<b 0 4 u, 6 4 u, b> PUSHREF";
+cell a0b7() asm "<b 0 4 u, 7 4 u, b> PUSHREF";
+cell a0b8() asm "<b 0 4 u, 8 4 u, b> PUSHREF";
+cell a0b9() asm "<b 0 4 u, 9 4 u, b> PUSHREF";
+
+cell b1a1() asm "<b 1 4 u, 1 4 u, b> PUSHREF";
+cell b1a2() asm "<b 2 4 u, 1 4 u, b> PUSHREF";
+cell b2a2() asm "<b 2 4 u, 2 4 u, b> PUSHREF";
+cell b2a3() asm "<b 3 4 u, 2 4 u, b> PUSHREF";
+cell b2a4() asm "<b 4 4 u, 2 4 u, b> PUSHREF";
+cell b3a4() asm "<b 4 4 u, 3 4 u, b> PUSHREF";
+cell b3a5() asm "<b 5 4 u, 3 4 u, b> PUSHREF";
+cell b3a6() asm "<b 6 4 u, 3 4 u, b> PUSHREF";
+cell b3a7() asm "<b 7 4 u, 3 4 u, b> PUSHREF";
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal() impure {
     (cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
     slice data2 = get_data().begin_parse();
     slice dataparser = data2;
-    int when = (dataparser~load_uint(32));
-    throw_unless(2, when >= now());
     int counterA = dataparser~load_uint(size);
     int counterB = dataparser~load_uint(size);
-    throw_if(13, counterA + counterB > 9);
+    if ((counterA == 0) & (counterB == 0)) {
+        int when = (dataparser.preload_uint(32));
+        throw_unless(2, when >= now());
+        ;; set_data(a0b1()); ;; TODO: add sender address
+        ;; return ();
+    }
+    ;; if ((counterA == 0) & (counterB == 2)) {
+    ;;     set_data(a0b3());
+    ;;     return ();
+    ;; }
+    ;; if (counterB == 3) {
+    ;;     set_data(a0b4());
+    ;;     return ();
+    ;; }
+    ;; if (counterB == 4) {
+    ;;     set_data(a0b5());
+    ;;     return ();
+    ;; }
+    ;; if (counterB == 5) {
+    ;;     set_data(a0b6());
+    ;;     return ();
+    ;; }
+    ;; if (counterB == 6) {
+    ;;     set_data(a0b7());
+    ;;     return ();
+    ;; }
+    ;; if (counterB == 7) {
+    ;;     set_data(a0b8());
+    ;;     return ();
+    ;; }
+    ;; if (counterB == 8) {
+    ;;     set_data(a0b9());
+    ;;     return ();
+    ;; }
+
+    ;; if ((counterB == 1) & (counterA == 1)) {
+    ;;     set_data(b1a2());
+    ;;     return ();
+    ;; }
+    ;; if ((counterB == 1) & (counterA == 2)) {
+    ;;     set_data(b2a2());
+    ;;     return ();
+    ;; }
+    ;; if ((counterB == 2) & (counterA == 2)) {
+    ;;     set_data(b2a3());
+    ;;     return ();
+    ;; }
+    ;; if ((counterB == 2) & (counterA == 3)) {
+    ;;     set_data(b2a4());
+    ;;     return ();
+    ;; }
+    ;; if ((counterB == 2) & (counterA == 4)) {
+    ;;     set_data(b3a4());
+    ;;     return ();
+    ;; }
+    ;; if ((counterB == 3) & (counterA == 4)) {
+    ;;     set_data(b3a5());
+    ;;     return ();
+    ;; }
+    ;; if ((counterB == 3) & (counterA == 5)) {
+    ;;     set_data(b3a6());
+    ;;     return ();
+    ;; }
+    ;; if ((counterB == 3) & (counterA == 6)) {
+    ;;     set_data(b3a7());
+    ;;     return ();
+    ;; }
+
     int bool = in_msg_body~check_if_op_and_1();
 
-    if (counterB <= 1 & (counterA == 0)) {
+    if ((counterB <= 1) & (counterA == 0)) {
         slice c = in_msg_full.begin_parse().preload_bits(43);
         throw_if(1, c.equal_slices_bits(dataparser));
         ifnot (bool) {
-            int b = inc(data2~load_uint(size + 32));
+            int a = inc(data2~load_uint(size));
             set_data(
                 begin_cell()
-                    .store_uint(b, size + 32)
+                    .store_uint(a, size)
                     .store_slice(data2.preload_bits(size))
                     .store_slice(c)
                     .end_cell()
             );
             return ();
         }
-        var a = data2.preload_uint(size * 2 + 32);
+        var a = data2.preload_uint(size * 2);
         set_data(
             begin_cell()
-                .store_uint(inc(a), size * 2 + 32)
+                .store_uint(inc(a), size * 2)
                 .store_slice(c)
                 .end_cell()
         );
         return ();
     }
-
     ;; if b=0 and a=0 and vote for B => store users address
     ;; if b=1 and a=0 => check the address
 
 
-    ;; exists a=0 and b=1
+    ;; exists a=0x and b=1
     ;; exists a=0 and b=2
     ;; exists a=0 and b=3
     ;; exists a=0 and b=4
@@ -66,7 +150,7 @@ const int size = 4; ;; btw it can be 44, 45 and more
     ;; exists a=5 and b=3
     ;; exists a=6 and b=3
     ;; ---end---
-    ;; DOES NOT EXIST  a=1 and b=2
+    ;; DOES NOT EXIST  a=1- and b=2
     ;; DOES NOT EXIST  a=2 and b=3
     ;; DOES NOT EXISTS a=3 and b=3
     ;; DOES NOT EXISTS a=4 and b=4
@@ -83,19 +167,19 @@ const int size = 4; ;; btw it can be 44, 45 and more
     ;;     throw_if(1, bool);
     ;; }
     ifnot (bool) {
-        int b = inc(data2~load_uint(size + 32));
+        int b = inc(data2~load_uint(size));
         set_data(
             begin_cell()
-                .store_uint(b, size + 32)
+                .store_uint(b, size)
                 .store_slice(data2)
                 .end_cell()
         );
         return ();
     }
-    var a = data2.preload_uint((size * 2) + 32);
+    var a = data2.preload_uint(size * 2);
     set_data(
         begin_cell()
-            .store_uint(inc(a), (size * 2) + 32)
+            .store_uint(inc(a), size * 2)
             .end_cell()
     );
 
@@ -104,7 +188,6 @@ const int size = 4; ;; btw it can be 44, 45 and more
 
 _ proposalState() method_id (-14) {
     slice s = get_data().begin_parse();
-    s~skip_bits(32);
     return (
         s~load_uint(size),
         s.preload_uint(size)
