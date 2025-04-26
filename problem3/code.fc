@@ -7,7 +7,7 @@ int inc(int v) asm "INC";
 const int size = 4; ;; btw it can be 44, 45 and more
 (cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY 0 THROWIF""";
 
-cell a0b1() asm "<b 0 4 u, 1 4 u, b> PUSHREF";
+cell a0b1_c3() asm "<b 0 4 u, 1 4 u, 3 2 u, b> PUSHREF";
 cell a0b2() asm "<b 0 4 u, 2 4 u, b> PUSHREF";
 cell a0b3() asm "<b 0 4 u, 3 4 u, b> PUSHREF";
 cell a0b4() asm "<b 0 4 u, 4 4 u, b> PUSHREF";
@@ -16,6 +16,7 @@ cell a0b6() asm "<b 0 4 u, 6 4 u, b> PUSHREF";
 cell a0b7() asm "<b 0 4 u, 7 4 u, b> PUSHREF";
 cell a0b8() asm "<b 0 4 u, 8 4 u, b> PUSHREF";
 cell a0b9() asm "<b 0 4 u, 9 4 u, b> PUSHREF";
+cell a1bo() asm "<b 1 4 u, 0 4 u, b> PUSHREF";
 cell b1a1() asm "<b 1 4 u, 1 4 u, b> PUSHREF";
 cell b1a2() asm "<b 2 4 u, 1 4 u, b> PUSHREF";
 cell b2a2() asm "<b 2 4 u, 2 4 u, b> PUSHREF";
@@ -41,8 +42,18 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
     if ((counterA == 0) & (counterB == 0)) {
         int when = (dataparser.preload_uint(32));
         throw_unless(2, when >= now());
-        ;; set_data(a0b1()); ;; TODO: add sender address
-        ;; return ();
+        ifnot (in_msg_body~check_if_op_and_1()) {
+            set_data(a1bo());
+            return ();
+        }
+        ;; slice c = in_msg_full.begin_parse();
+        ;; c~skip_bits(43);
+        ;; c = c.preload_bits(2);
+        ;; var a = data2.preload_uint(size * 2);
+        set_data(
+            a0b1_c3()
+        );
+        return ();
     }
     elseif ((counterA == 0)) {
         if (counterB == 2) {
@@ -111,14 +122,12 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
         }
     }
     int bool = in_msg_body~check_if_op_and_1();
-
-    if (counterB <= 1 & (counterA == 0)) {
+    throw_if(1, (counterB == 0) & (counterA == 1));
+    if ((counterB <= 1) & ((counterA == 0) | (counterA == 1))) {
         slice c = in_msg_full.begin_parse();
         c~skip_bits(43);
         c = c.preload_bits(2);
-        ;; if (counterB == 1) {
-        ;;     throw_if(1, (c.preload_uint(43) % 4) == 0);
-        ;; }
+
         throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
         ifnot (bool) {
             int b = inc(data2~load_uint(size));
