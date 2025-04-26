@@ -17,14 +17,14 @@ cell a0b7() asm "<b 0 4 u, 7 4 u, b> PUSHREF";
 cell a0b8() asm "<b 0 4 u, 8 4 u, b> PUSHREF";
 cell a0b9() asm "<b 0 4 u, 9 4 u, b> PUSHREF";
 cell b1a1() asm "<b 1 4 u, 1 4 u, b> PUSHREF";
-cell b1a2() asm "<b 1 4 u, 2 4 u, b> PUSHREF";
+cell b1a2() asm "<b 2 4 u, 1 4 u, b> PUSHREF";
 cell b2a2() asm "<b 2 4 u, 2 4 u, b> PUSHREF";
-cell b2a3() asm "<b 2 4 u, 3 4 u, b> PUSHREF";
-cell b2a4() asm "<b 2 4 u, 4 4 u, b> PUSHREF";
-cell b3a4() asm "<b 3 4 u, 4 4 u, b> PUSHREF";
-cell b3a5() asm "<b 3 4 u, 5 4 u, b> PUSHREF";
-cell b3a6() asm "<b 3 4 u, 6 4 u, b> PUSHREF";
-cell b3a7() asm "<b 3 4 u, 7 4 u, b> PUSHREF";
+cell b2a3() asm "<b 3 4 u, 2 4 u, b> PUSHREF";
+cell b2a4() asm "<b 4 4 u, 2 4 u, b> PUSHREF";
+cell b3a4() asm "<b 4 4 u, 3 4 u, b> PUSHREF";
+cell b3a5() asm "<b 5 4 u, 3 4 u, b> PUSHREF";
+cell b3a6() asm "<b 6 4 u, 3 4 u, b> PUSHREF";
+cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
 ;;; adds 2 uin64 (containing 2 uint32)
 () recv_internal() impure {
     (cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
@@ -75,11 +75,51 @@ cell b3a7() asm "<b 3 4 u, 7 4 u, b> PUSHREF";
         }
 
     }
+    elseif (counterA >= 1) {
+        if ((counterB == 1) & (counterA == 1)) {
+            set_data(b1a2());
+            return ();
+        }
+        if (counterB == 1) {
+            set_data(b2a2());
+            return ();
+        }
+        if (counterA == 2) {
+            set_data(b2a3());
+            return ();
+        }
+        if (counterA == 3) {
+            set_data(b2a4());
+            return ();
+        }
+
+        if ((counterB == 2) & (counterA == 4)) {
+            set_data(b3a4());
+            return ();
+        }
+        if ((counterA == 4) & (counterB == 3)) {
+            set_data(b3a5());
+            return ();
+        }
+        if ((counterA == 5) & (counterB == 3)) {
+            set_data(b3a6());
+            return ();
+        }
+        if ((counterA == 6) & (counterB == 3)) {
+            set_data(b4a6());
+            return ();
+        }
+    }
     int bool = in_msg_body~check_if_op_and_1();
 
     if (counterB <= 1 & (counterA == 0)) {
-        slice c = in_msg_full.begin_parse().preload_bits(43);
-        throw_if(1, c.equal_slices_bits(dataparser));
+        slice c = in_msg_full.begin_parse();
+        c~skip_bits(43);
+        c = c.preload_bits(2);
+        ;; if (counterB == 1) {
+        ;;     throw_if(1, (c.preload_uint(43) % 4) == 0);
+        ;; }
+        throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
         ifnot (bool) {
             int b = inc(data2~load_uint(size));
             set_data(
