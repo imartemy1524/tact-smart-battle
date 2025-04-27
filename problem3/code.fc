@@ -2,8 +2,15 @@
 (slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
 (slice, int) slice_stats_with_0_0(slice input) asm "<b 0 8 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_1_1(slice input) asm "<b 1 4 u, 1 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_1(slice input) asm "<b 0 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_2_1(slice input) asm "<b 2 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_2_2(slice input) asm "<b 2 4 u, 2 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_3_2(slice input) asm "<b 3 4 u, 2 4 u, b> <s SDBEGINSQ";
+(slice, int) starts_with_3(slice input) asm "<b 3 2 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_4_2(slice input) asm "<b 4 4 u, 2 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_4_3(slice input) asm "<b 4 4 u, 3 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_5_3(slice input) asm "<b 5 4 u, 3 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_6_3(slice input) asm "<b 6 4 u, 3 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_stats_with_0_1(slice input) asm "<b 0 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_0(slice input) asm "<b 0 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_1(slice input) asm "<b 1 4 u, b> <s SDBEGINSQ";
@@ -15,20 +22,49 @@
 (slice, int) slice_starts_with_7(slice input) asm "<b 7 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_8(slice input) asm "<b 8 4 u, b> <s SDBEGINSQ";
 (slice, ()) check_if_starts_with_00(slice input) impure asm """
-DUMPSTK
 <b 0 8 u, b> <s SDBEGINSQ IFJMP:<{
-    // check that date is correct
+    // check that date is correct (load from data last 32 bits)
     32 PLDU NOW GEQ 2 THROWIFNOT
-    // check for bool
+    // check for bool in msg_body
     x{00000001C_} SDBEGINSQ IFJMP:<{
-        <b 0 4 u, 1 4 u, 3 2 u, b> PUSHREF c4 POPCTR
+        <b 0 4 u, 1 4 u, b> PUSHREF c4 POPCTR
     }>
     <b 1 4 u, 0 4 u, b> PUSHREF c4 POP
 }>
 """;
-int sum2hack(int a, int b) asm "DIVMOD ADD";
+(slice, ()) check_if_starts_with_01(slice input) impure asm """
+    x{01} SDBEGINSQ
+    IFJMP:<{
+      s0 POP
+      s0 s1 XCHG
+      CTOS
+      43 PUSHINT
+      SDSKIPFIRST
+      <b 3 2 u, b> <s SDBEGINSQ
+      s1 POP
+      1 THROWIF
+      x{00000001C_} SDBEGINSQ
+      // s1 POP
+      <{
+        <b 1 4 u, 1 4 u, 0 2 u, b> PUSHREF c4 POPCTR
+      }> PUSHCONT
+      IFNOTJMP
+      <b 0 4 u, 2 4 u, b> PUSHREF
+      c4 POPCTR
+    }>
+
+""";
+(slice, ()) check_if_starts_with_22(slice input) impure asm """
+<b 2 4 u, 2 4 u, b> <s SDBEGINSQ IFJMP:<{
+    <b 3 4 u, 2 4 u, b> PUSHREF c4 POP
+}>
+""";
+(slice, ()) check_if_starts_with_11(slice input) impure asm """
+<b 1 4 u, 1 4 u, b> <s SDBEGINSQ IFJMP:<{
+    <b 2 4 u, 1 4 u, b> PUSHREF c4 POP
+}>
+""";
 int starts_with(slice a, slice b) asm "SDPFXREV";
-int inc(int v) asm "INC";
 const int size = 4; ;; btw it can be 44, 45 and more
 
 (slice, ()) set_data_ifnot_msgbody_bool(slice in_msg_body) impure asm """
@@ -64,21 +100,26 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
     ;; asm optimized way to check wheter it is the first call
     slice data2 = get_data().begin_parse();
     data2~check_if_starts_with_00();
-    if (data2~slice_starts_with_0()) {
-        if (data2~slice_starts_with_1()) {
-            slice c = in_msg_full.begin_parse();
-            c~skip_bits(43);
-            throw_if(1, c.starts_with(data2));
-            ifnot (in_msg_body~check_if_op_and_1()) {
-                set_data(a1b1_c0());
-                return ();
-            }
-            ;; increasing needed
-            set_data(
-                a0b2()
-            );
+    data2~check_if_starts_with_11();
+    ;; data2~check_if_starts_with_01();
+    if (data2~slice_starts_with_0_1()) {
+        slice c = in_msg_full.begin_parse();
+        c~skip_bits(43);
+        throw_if(1, c~starts_with_3());
+        ifnot (in_msg_body~check_if_op_and_1()) {
+            set_data(a1b1_c0());
             return ();
         }
+        ;; increasing needed
+        set_data(a0b2());
+        return ();
+    }
+    if (data2~slice_starts_with_2_1()) {
+        set_data(b2a2());
+        return ();
+    }
+    data2~check_if_starts_with_22();
+    if (data2~slice_starts_with_0()) {
         if (data2~slice_starts_with_2()) {
             set_data(a0b3());
             return ();
@@ -110,41 +151,23 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
         set_data(a0b10());
         return ();
     }
-    if (data2~slice_starts_with_2_2()){
-        set_data(b2a3());
-        return ();
-    }
-    ;; probably dont count on gas
-    if (data2~slice_starts_with_1_1()) {
-        set_data(b1a2());
-        return ();
-    }
-    if (data2~slice_starts_with_2_1()){
-        set_data(b2a2());
-        return ();
-    }
-
-    int counterA = data2~load_uint(size);
-    int counterB = data2~load_uint(size);
-
-    if (counterA == 3) {
+    if (data2~slice_starts_with_3_2()) {
         set_data(b2a4());
         return ();
     }
-
-    if ((counterB == 2) & (counterA == 4)) {
+    if (data2~slice_starts_with_4_2()) {
         set_data(b3a4());
         return ();
     }
-    if ((counterA == 4) & (counterB == 3)) {
+    if (data2~slice_starts_with_4_3()) {
         set_data(b3a5());
         return ();
     }
-    if ((counterA == 5) & (counterB == 3)) {
+    if (data2~slice_starts_with_5_3()) {
         set_data(b3a6());
         return ();
     }
-    if ((counterA == 6) & (counterB == 3)) {
+    if (data2~slice_starts_with_6_3()) {
         set_data(b4a6());
         return ();
     }
