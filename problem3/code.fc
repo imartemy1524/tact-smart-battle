@@ -3,6 +3,7 @@
 (slice, int) slice_stats_with_0_0(slice input) asm "<b 0 8 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_1_1(slice input) asm "<b 1 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_2_1(slice input) asm "<b 2 4 u, 1 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_2_2(slice input) asm "<b 2 4 u, 2 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_stats_with_0_1(slice input) asm "<b 0 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_0(slice input) asm "<b 0 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_1(slice input) asm "<b 1 4 u, b> <s SDBEGINSQ";
@@ -109,6 +110,10 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
         set_data(a0b10());
         return ();
     }
+    if (data2~slice_starts_with_2_2()){
+        set_data(b2a3());
+        return ();
+    }
     ;; probably dont count on gas
     if (data2~slice_starts_with_1_1()) {
         set_data(b1a2());
@@ -118,13 +123,10 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
         set_data(b2a2());
         return ();
     }
+
     int counterA = data2~load_uint(size);
     int counterB = data2~load_uint(size);
 
-    if (counterA == 2) {
-        set_data(b2a3());
-        return ();
-    }
     if (counterA == 3) {
         set_data(b2a4());
         return ();
