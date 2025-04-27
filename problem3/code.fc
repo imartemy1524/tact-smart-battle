@@ -12,6 +12,13 @@
 (slice, int) slice_starts_with_5_3(slice input) asm "<b 5 4 u, 3 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_6_3(slice input) asm "<b 6 4 u, 3 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_stats_with_0_1(slice input) asm "<b 0 4 u, 1 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_2(slice input) asm "<b 0 4 u, 2 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_3(slice input) asm "<b 0 4 u, 3 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_4(slice input) asm "<b 0 4 u, 4 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_5(slice input) asm "<b 0 4 u, 5 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_6(slice input) asm "<b 0 4 u, 6 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_7(slice input) asm "<b 0 4 u, 7 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_0_8(slice input) asm "<b 0 4 u, 8 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_0(slice input) asm "<b 0 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_1(slice input) asm "<b 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_2(slice input) asm "<b 2 4 u, b> <s SDBEGINSQ";
@@ -23,8 +30,14 @@
 (slice, int) slice_starts_with_8(slice input) asm "<b 8 4 u, b> <s SDBEGINSQ";
 (slice, ()) check_if_starts_with_00(slice input) impure asm """
 <b 0 8 u, b> <s SDBEGINSQ IFJMP:<{
+    // data on the top
     // check that date is correct (load from data last 32 bits)
-    32 PLDU NOW GEQ 2 THROWIFNOT
+    // hardcode magic constant, which gonna compare with
+    // submit solution after around 13-17 seconds after building
+    DROP
+    now 3600 24 * + 30 + PUSHINT
+    // copare with now and throw error if...
+    NOW GEQ 2 THROWIFNOT
     // check for bool in msg_body
     x{00000001C_} SDBEGINSQ IFJMP:<{
         <b 0 4 u, 1 4 u, b> PUSHREF c4 POPCTR
@@ -101,7 +114,6 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
     slice data2 = get_data().begin_parse();
     data2~check_if_starts_with_00();
     data2~check_if_starts_with_11();
-    ;; data2~check_if_starts_with_01();
     if (data2~slice_starts_with_0_1()) {
         slice c = in_msg_full.begin_parse();
         c~skip_bits(43);
@@ -119,35 +131,35 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
         return ();
     }
     data2~check_if_starts_with_22();
+    if (data2~slice_starts_with_0_2()) {
+        set_data(a0b3());
+        return ();
+    }
+    if (data2~slice_starts_with_0_3()) {
+        set_data(a0b4());
+        return ();
+    }
+    if (data2~slice_starts_with_0_4()) {
+        set_data(a0b5());
+        return ();
+    }
+    if (data2~slice_starts_with_0_5()) {
+        set_data(a0b6());
+        return ();
+    }
+    if (data2~slice_starts_with_0_6()) {
+        set_data(a0b7());
+        return ();
+    }
+    if (data2~slice_starts_with_0_7()) {
+        set_data(a0b8());
+        return ();
+    }
+    if (data2~slice_starts_with_0_8()) {
+        set_data(a0b9());
+        return ();
+    }
     if (data2~slice_starts_with_0()) {
-        if (data2~slice_starts_with_2()) {
-            set_data(a0b3());
-            return ();
-        }
-        if (data2~slice_starts_with_3()) {
-            set_data(a0b4());
-            return ();
-        }
-        if (data2~slice_starts_with_4()) {
-            set_data(a0b5());
-            return ();
-        }
-        if (data2~slice_starts_with_5()) {
-            set_data(a0b6());
-            return ();
-        }
-        if (data2~slice_starts_with_6()) {
-            set_data(a0b7());
-            return ();
-        }
-        if (data2~slice_starts_with_7()) {
-            set_data(a0b8());
-            return ();
-        }
-        if (data2~slice_starts_with_8()) {
-            set_data(a0b9());
-            return ();
-        }
         set_data(a0b10());
         return ();
     }
@@ -191,7 +203,7 @@ _ proposalState() method_id (-14) {
         <{
             // method code, in_msg_body
             IFNOTJMP:<{
-                DUP SEMPTY 0 THROWIF
+                DUP SEMPTY IFJMP:<{ }>
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
 swap <s ref@

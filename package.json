@@ -6,6 +6,7 @@
         "test1": "bun ./problem1/prepare.ts && tact -c tact.config.json --project solution1 && jest --verbose public1",
         "test2": "bun ./problem2/prepare.ts && tact -c tact.config.json --project solution2 && jest --verbose public2",
         "test3": "bun ./problem3/prepare.ts && tact -c tact.config.json --project solution3 && jest --verbose public3",
+        "test33": "tact -c tact.config.json --project solution3 && jest --verbose public3",
         "test4": "bun ./problem4/prepare.ts && tact -c tact.config.json --project solution4 && jest --verbose public4",
         "test5": "bun ./problem5/prepare.ts && tact -c tact.config.json --project solution5 && jest --verbose public5"
     },

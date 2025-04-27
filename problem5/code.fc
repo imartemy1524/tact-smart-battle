@@ -13,10 +13,8 @@ builder store_none_flags(builder b) impure asm "x{0000000000000000000000000001_}
     send_raw_message(msg2sender, SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 }
 slice subslice(slice a, int from, int to) asm "SDSUBSTR";
-(int, cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY 0 THROWIF""";
 
-() recv_internal() impure {
-    (int amount, cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
+() recv_internal(int amount, cell in_msg_full, slice in_msg_body) impure {
     if (amount < const::min_amount) {
         return ();
     }
@@ -65,6 +63,7 @@ _ proposalState() method_id (-14) {
 
         <{
             IFNOTJMP:<{
+                DUP SEMPTY IFJMP:<{ }>
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
 swap <s ref@
