@@ -5,6 +5,7 @@ import { Proposal } from '../output/solution3_Proposal';
 
 it('3', async () => {
     const blockchain = await Blockchain.create();
+    blockchain.now = (Math.floor(Date.now() / 1000));
     // create contract from init()
     const proposal = blockchain.openContract(
         await Proposal.fromInit({

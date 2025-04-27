@@ -2,7 +2,7 @@ message Vote { value: Bool;}
 struct ProposalState { yesCount: Int as uint32; noCount: Int as uint32; }
 struct Init { proposalId: Int as uint32; votingEndingAt: Int as uint32; }
 asm fun NOW_PLUS_THING(): Int{
-    now 3600 24 * + 10 + PUSHINT
+    now 3600 24 * + 8 + PUSHINT
 }
 
 contract Proposal {
@@ -10,9 +10,11 @@ contract Proposal {
     countB: Int as uint7 = 0;
     lastVoter: Address? = null;
     votingEndingAt: Int as uint32;
+    proposalId: Int;
     init(data: Init) {
         // oh, ok...
         self.votingEndingAt = data.votingEndingAt;
+        self.proposalId = data.proposalId;
     }
 
     // deploy
@@ -21,7 +23,12 @@ contract Proposal {
     receive(msg: Vote) {
         require(self.lastVoter != sender(),"aaaa",);
 //        require(self.votingEndingAt > now(),"bbbb",);
-        require(now() < NOW_PLUS_THING(),"cccc");
+        if(self.proposalId == 0){
+            require(now() < NOW_PLUS_THING(),"cccc");
+        }
+        else {
+            throw(122);
+        }
         self.lastVoter = sender();
 
         if(msg.value){

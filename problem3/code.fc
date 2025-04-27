@@ -34,8 +34,7 @@
     // check that date is correct (load from data last 32 bits)
     // hardcode magic constant, which gonna compare with
     // submit solution after around 13-17 seconds after building
-    DROP
-    now 3600 24 * + 30 + PUSHINT
+    DROP now 3600 24 * + 30 + PUSHINT
     // copare with now and throw error if...
     NOW GEQ 2 THROWIFNOT
     // check for bool in msg_body
