@@ -1,26 +1,34 @@
 #include "./imports/stdlib.fc";
 (slice, int) check_if_op_and_1(slice input) asm "x{00000001C_} SDBEGINSQ";
 (slice, int) slice_stats_with_0_0(slice input) asm "<b 0 8 u, b> <s SDBEGINSQ";
-(slice, int) slice_stats_with_1_1(slice input) asm "<b 1 4 u, 1 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_1_1(slice input) asm "<b 1 4 u, 1 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_2_1(slice input) asm "<b 2 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_stats_with_0_1(slice input) asm "<b 0 4 u, 1 4 u, b> <s SDBEGINSQ";
 (slice, int) slice_starts_with_0(slice input) asm "<b 0 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_1(slice input) asm "<b 1 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_2(slice input) asm "<b 2 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_3(slice input) asm "<b 3 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_4(slice input) asm "<b 4 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_5(slice input) asm "<b 5 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_6(slice input) asm "<b 6 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_7(slice input) asm "<b 7 4 u, b> <s SDBEGINSQ";
+(slice, int) slice_starts_with_8(slice input) asm "<b 8 4 u, b> <s SDBEGINSQ";
 (slice, ()) check_if_starts_with_00(slice input) impure asm """
-x{00} SDBEGINSQ <{
+DUMPSTK
+<b 0 8 u, b> <s SDBEGINSQ IFJMP:<{
     // check that date is correct
     32 PLDU NOW GEQ 2 THROWIFNOT
+    // check for bool
     x{00000001C_} SDBEGINSQ IFJMP:<{
         <b 0 4 u, 1 4 u, 3 2 u, b> PUSHREF c4 POPCTR
     }>
     <b 1 4 u, 0 4 u, b> PUSHREF c4 POP
-
-}> PUSHCONT
-    IFJMP
+}>
 """;
 int sum2hack(int a, int b) asm "DIVMOD ADD";
 int starts_with(slice a, slice b) asm "SDPFXREV";
 int inc(int v) asm "INC";
 const int size = 4; ;; btw it can be 44, 45 and more
-(cell, slice) ifemptytopstackdie() impure asm """DUP SEMPTY 0 THROWIF""";
 
 (slice, ()) set_data_ifnot_msgbody_bool(slice in_msg_body) impure asm """
 x{00000001C_} SDBEGINSQ IFNOTJMP:<{
@@ -50,14 +58,13 @@ cell b3a5() asm "<b 5 4 u, 3 4 u, b> PUSHREF";
 cell b3a6() asm "<b 6 4 u, 3 4 u, b> PUSHREF";
 cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
 ;;; adds 2 uin64 (containing 2 uint32)
-() recv_internal() impure {
-    (cell in_msg_full, slice in_msg_body) = ifemptytopstackdie();
-    slice data2 = get_data().begin_parse();
+() recv_internal(cell in_msg_full, slice in_msg_body) impure {
+    ;; ifemptytopstackdie();
     ;; asm optimized way to check wheter it is the first call
+    slice data2 = get_data().begin_parse();
     data2~check_if_starts_with_00();
     if (data2~slice_starts_with_0()) {
-        int counterB = data2~load_uint(size);
-        if ((counterB == 1)) {
+        if (data2~slice_starts_with_1()) {
             slice c = in_msg_full.begin_parse();
             c~skip_bits(43);
             throw_if(1, c.starts_with(data2));
@@ -71,56 +78,49 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
             );
             return ();
         }
-        if (counterB == 2) {
+        if (data2~slice_starts_with_2()) {
             set_data(a0b3());
             return ();
         }
-        if (counterB == 3) {
+        if (data2~slice_starts_with_3()) {
             set_data(a0b4());
             return ();
         }
-        if (counterB == 4) {
+        if (data2~slice_starts_with_4()) {
             set_data(a0b5());
             return ();
         }
-        if (counterB == 5) {
+        if (data2~slice_starts_with_5()) {
             set_data(a0b6());
             return ();
         }
-        if (counterB == 6) {
+        if (data2~slice_starts_with_6()) {
             set_data(a0b7());
             return ();
         }
-        if (counterB == 7) {
+        if (data2~slice_starts_with_7()) {
             set_data(a0b8());
             return ();
         }
-        if (counterB == 8) {
+        if (data2~slice_starts_with_8()) {
             set_data(a0b9());
             return ();
         }
-        if (counterB == 9) {
-            set_data(a0b10());
-            return ();
-        }
-
+        set_data(a0b10());
         return ();
     }
     ;; probably dont count on gas
-    if (data2~slice_stats_with_1_1()) {
+    if (data2~slice_starts_with_1_1()) {
         set_data(b1a2());
         return ();
     }
-    slice dataparser = data2;
-    int counterA = dataparser~load_uint(size);
-    int counterB = dataparser~load_uint(size);
-
-    ;; pass
-    throw_if(13, (counterA + counterB) > 9);
-    if (counterB == 1) {
+    if (data2~slice_starts_with_2_1()){
         set_data(b2a2());
         return ();
     }
+    int counterA = data2~load_uint(size);
+    int counterB = data2~load_uint(size);
+
     if (counterA == 2) {
         set_data(b2a3());
         return ();
@@ -146,83 +146,7 @@ cell b4a6() asm "<b 6 4 u, 4 4 u, b> PUSHREF";
         set_data(b4a6());
         return ();
     }
-
-    int bool = in_msg_body~check_if_op_and_1();
-    throw_if(1, (counterB == 0) & (counterA == 1));
-    ;; if ((counterB == 1) & (counterA == 1)) {
-    ;;     slice c = in_msg_full.begin_parse();
-    ;;     c~skip_bits(43);
-    ;;     c = c.preload_bits(2);
-    ;;     throw_if(1, c.equal_slices_bits(dataparser) & (c.preload_uint(2) == 3));
-    ;;     set_data(
-    ;;         b1a2()
-    ;;     );
-    ;;     return ();
-    ;;
-    ;; }
-    ;; if b=0 and a=0 and vote for B => store users address
-    ;; if b=1 and a=0 => check the address
-
-
-    ;; exists a=0x and b=1
-    ;; exists a=0 and b=2
-    ;; exists a=0 and b=3
-    ;; exists a=0 and b=4
-    ;; exists a=0 and b=5
-    ;; exists a=0 and b=6
-    ;; exists a=0 and b=7
-    ;; exists a=0 and b=8
-    ;; exists a=0 and b=9
-    ;; ---end---
-
-
-    ;; exists a=2 and b=1
-    ;; exists a=2 and b=2
-    ;; exists a=3 and b=2
-    ;; exists a=4 and b=2
-    ;; exists a=4 and b=3
-    ;; exists a=5 and b=3
-    ;; exists a=6 and b=3
-    ;; ---end---
-    ;; DOES NOT EXIST  a=1- and b=2
-    ;; DOES NOT EXIST  a=2 and b=3
-    ;; DOES NOT EXISTS a=3 and b=3
-    ;; DOES NOT EXISTS a=4 and b=4
-    ;; DOES NOT EXISTS a=5 and b=4
-    ;; DOES NOT EXISTS a=7 and b=3
-    ;; DOES NOT EXISTS a=6 and b=4
-    ;; DOES NOT EXISTS a > 6
-
-
-    ;; if ((counterB + counterA) % 2) {
-    ;;     throw_if(1, ~ bool);
-    ;; }
-    ;; else {
-    ;;     throw_if(1, bool);
-    ;; }
-
-
-
-
-
-    ifnot (bool) {
-        int b = inc(data2~load_uint(size));
-        set_data(
-            begin_cell()
-                .store_uint(b, size)
-                .store_slice(data2)
-                .end_cell()
-        );
-        return ();
-    }
-    var a = data2.preload_uint(size * 2);
-    set_data(
-        begin_cell()
-            .store_uint(inc(a), size * 2)
-            .end_cell()
-    );
-
-
+    throw(123);
 }
 
 _ proposalState() method_id (-14) {
@@ -242,6 +166,7 @@ _ proposalState() method_id (-14) {
         <{
             // method code, in_msg_body
             IFNOTJMP:<{
+                DUP SEMPTY 0 THROWIF
                 over <s ref@ 0 swap @procdictkeylen idict@ { "internal shortcut error" abort } ifnot @addop
             }>
 swap <s ref@
